@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { initOrbitControls } from './util.js';
 
-import { Floor } from './Geometry/floor.js';
-import { Box } from './Geometry/box.js';
+import { Floor } from './Object/Floor.js';
+import { Box } from './Object/Box.js';
 // support multiple selectable boxes
-import { Skybox } from './Geometry/skybox.js';
+import { Skybox } from './Object/Skybox.js';
 // UI modules
 import { createGUI } from './UI/gui.js';
 import { initBoxControls } from './UI/boxControls.js';

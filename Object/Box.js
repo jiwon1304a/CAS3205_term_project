@@ -1,13 +1,14 @@
 import * as THREE from 'three';
+import BaseObject from './Object.js';
 
-export class Box {
-    constructor({ width = 1, height = 1, depth = 1, color = 0x0077ff, metalness = 0.5, roughness = 0.3, position = { x: 0, y: 0, z: 0 } } = {}) {
-        this.group = new THREE.Object3D();
+export class Box extends BaseObject {
+    constructor({ width = 1, height = 1, depth = 1, color = 0x0077ff, metalness = 0.5, roughness = 0.3, position = { x: 0, y: 0, z: 0 }, name = '' } = {}) {
+        // initialize base with position and optional name
+        const posVec = new THREE.Vector3(position.x || 0, position.y || 0, position.z || 0);
+        super({ position: posVec, name });
 
         const geometry = new THREE.BoxGeometry(width, height, depth);
         // Move geometry so that the box corner is at the local origin (0,0,0).
-        // By default BoxGeometry is centered at the origin; translate it by
-        // half-extents so one corner lies at (0,0,0).
         geometry.translate(width / 2, height / 2, depth / 2);
         this.material = new THREE.MeshStandardMaterial({ color, metalness, roughness });
         this.mesh = new THREE.Mesh(geometry, this.material);
@@ -19,31 +20,20 @@ export class Box {
         this._selected = false;
         this._originalEmissive = this.material.emissive ? this.material.emissive.clone() : new THREE.Color(0x000000);
 
+        // add to the wrapped object3D (alias 'group' set in base)
         this.group.add(this.mesh);
-        this.setPosition(position.x, position.y, position.z);
     }
 
-    setPosition(x = 0, y = 0, z = 0) {
-        this.group.position.set(x, y, z);
-        return this;
-    }
+    // Maintain original API surface
+    setPosition(x = 0, y = 0, z = 0) { super.setPosition(new THREE.Vector3(x, y, z)); return this; }
+    setRotation(x = 0, y = 0, z = 0) { super.setRotation(new THREE.Euler(x, y, z)); return this; }
 
-    setRotation(x = 0, y = 0, z = 0) {
-        this.group.rotation.set(x, y, z);
-        return this;
-    }
-
-    setColor(color) {
-        if (this.material) this.material.color.set(color);
-        return this;
-    }
+    setColor(color) { if (this.material) this.material.color.set(color); return this; }
 
     setSize(width = 1, height = 1, depth = 1) {
         if (!this.mesh) return this;
-        // allow calling setSize(singleNumber) for uniform scale
         if (typeof height === 'undefined' || typeof depth === 'undefined') {
-            height = width;
-            depth = width;
+            height = width; depth = width;
         }
         this.mesh.geometry.dispose();
         const geom = new THREE.BoxGeometry(width, height, depth);
@@ -63,12 +53,7 @@ export class Box {
         return this;
     }
 
-    move(dx = 0, dy = 0, dz = 0) {
-        this.group.position.x += dx;
-        this.group.position.y += dy;
-        this.group.position.z += dz;
-        return this;
-    }
+    move(dx = 0, dy = 0, dz = 0) { this.group.position.x += dx; this.group.position.y += dy; this.group.position.z += dz; return this; }
 
     rotate(x = 0, y = 0, z = 0, inDegrees = false) {
         if (inDegrees) {
@@ -82,12 +67,8 @@ export class Box {
         return this;
     }
 
-    addTo(parent) {
-        if (parent && typeof parent.add === 'function') parent.add(this.group);
-        return this;
-    }
-
-    getObject3D() {
-        return this.group;
-    }
+    addTo(parent) { if (parent && typeof parent.add === 'function') parent.add(this.group); return this; }
+    getObject3D() { return this.group; }
 }
+
+export default Box;
