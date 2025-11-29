@@ -353,7 +353,7 @@ export class Gizmo {
             this.raycaster.setFromCamera(this.pointer, this.camera);
             const rayOrigin = this.raycaster.ray.origin.clone();
             const rayDir = this.raycaster.ray.direction.clone();
-            const axisVec = this._axisVector(this._activeHandle.axis, obj3);
+            const axisVec = this._axisToVector(this._activeHandle.axis);
             const closest = this._closestPointOnLineToRay(rayOrigin, rayDir, this._startPosition.clone(), axisVec.clone());
             if (closest == null) return;
             const currentU = closest.u;
@@ -362,6 +362,12 @@ export class Gizmo {
             const newWorldPos = this._startPosition.clone().add(axisVec.clone().multiplyScalar(snapped));
             const newLocal = newWorldPos.clone();
             if (obj3.parent) obj3.parent.worldToLocal(newLocal);
+            console.log('Gizmo axis move:', this._activeHandle.axis, 
+                ' axisVec=', axisVec,
+                ' delta=', delta, 
+                ' snapped=', snapped, 
+                ' newWorld=', newWorldPos, 
+                ' newLocal=', newLocal);
             if (this._activeHandle.axis === 'X') obj3.position.x = newLocal.x;
             if (this._activeHandle.axis === 'Y') obj3.position.y = newLocal.y;
             if (this._activeHandle.axis === 'Z') obj3.position.z = newLocal.z;
@@ -476,6 +482,14 @@ export class Gizmo {
         const q = obj3.getWorldQuaternion(new THREE.Quaternion());
         v.applyQuaternion(q);
         return v.normalize();
+    }
+
+    _axisToVector(axis) {
+        const v = new THREE.Vector3();
+        if (axis === 'X') v.set(1, 0, 0);
+        if (axis === 'Y') v.set(0, 1, 0);
+        if (axis === 'Z') v.set(0, 0, 1);
+        return v;
     }
 
     // runtime setters
