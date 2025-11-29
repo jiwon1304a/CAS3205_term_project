@@ -128,7 +128,7 @@ initSkyboxControls({ gui, params, sky, scene });
 
 // Transform (gizmo) controls
 // create unified gizmo (visuals + interaction + snapping)
-gizmo = new Gizmo({ renderer, camera, domElement: renderer.domElement, orbitControls, size: 3, snap: { translate: 1, rotate: 15, scale: 0.1 } });
+gizmo = new Gizmo({ renderer, camera, domElement: renderer.domElement, orbitControls, scene, size: 3, snap: { translate: 1, rotate: 15, scale: 0.1 } });
 scene.add(gizmo.group);
 gizmo.setVisibility(false);
 

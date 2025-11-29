@@ -34,6 +34,14 @@ export function initSelection({ renderer, camera, scene, raycaster, pointer, onS
             _moved = false;
             return;
         }
+        // If pointerdown didn't originate on the renderer (e.g. gizmo consumed it),
+        // don't run selection logic on pointerup.
+        if (!_mouseDown) {
+            _mouseDown = false;
+            _moved = false;
+            return;
+        }
+
         // If this was a drag, don't change selection
         if (_moved) {
             _mouseDown = false;

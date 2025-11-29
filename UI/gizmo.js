@@ -31,6 +31,10 @@ const GIZMO_CONFIG = {
     // numerics
     EPSILON: 1e-6,
     DEFAULT_BASE: 1.0,
+    // occlusion
+    OCCLUDED_OPACITY: 0.35,
+    // when object is this many times larger than gizmo size, treat as 'large'
+    LARGE_OBJECT_RATIO: 10.0,
 };
 
 export class Gizmo {
@@ -39,6 +43,8 @@ export class Gizmo {
         this.camera = camera;
         this.domElement = domElement || renderer.domElement;
         this.orbitControls = orbitControls;
+        // optional scene reference used for occlusion testing
+        this.scene = arguments[0] && arguments[0].scene ? arguments[0].scene : null;
         this.snap = snap;
 
         this.group = new THREE.Object3D();
@@ -96,6 +102,9 @@ export class Gizmo {
         const matY = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const matZ = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 
+        // keep track of materials so we can toggle occlusion visibility
+        this._materials = [matX, matY, matZ];
+
         const headOffset = GIZMO_CONFIG.HEAD_OFFSET;
         const shaftOffset = GIZMO_CONFIG.SHAFT_OFFSET;
         
@@ -149,6 +158,47 @@ export class Gizmo {
         const scaleGroup = new THREE.Object3D();
         scaleGroup.add(bx, by, bz);
 
+        // Overlay (transparent) visuals: duplicates of the main meshes rendered
+        // on-top so the gizmo remains visible even when occluded by geometry.
+        const matXOverlay = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
+        const matYOverlay = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
+        const matZOverlay = new THREE.MeshBasicMaterial({ color: 0x0000ff, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
+
+        const overlayTranslate = new THREE.Object3D();
+        const shaftX_o = shaftX.clone(); shaftX_o.material = matXOverlay; shaftX_o.userData = { gizmo: false }; shaftX_o.renderOrder = 999;
+        const headX_o = headX.clone(); headX_o.material = matXOverlay; headX_o.userData = { gizmo: false }; headX_o.renderOrder = 999;
+        const shaftY_o = shaftY.clone(); shaftY_o.material = matYOverlay; shaftY_o.userData = { gizmo: false }; shaftY_o.renderOrder = 999;
+        const headY_o = headY.clone(); headY_o.material = matYOverlay; headY_o.userData = { gizmo: false }; headY_o.renderOrder = 999;
+        const shaftZ_o = shaftZ.clone(); shaftZ_o.material = matZOverlay; shaftZ_o.userData = { gizmo: false }; shaftZ_o.renderOrder = 999;
+        const headZ_o = headZ.clone(); headZ_o.material = matZOverlay; headZ_o.userData = { gizmo: false }; headZ_o.renderOrder = 999;
+        overlayTranslate.add(shaftX_o, headX_o, shaftY_o, headY_o, shaftZ_o, headZ_o);
+
+        const overlayRotate = new THREE.Object3D();
+        const ringX_o = ringX.clone(); ringX_o.material = matXOverlay; ringX_o.userData = { gizmo: false }; ringX_o.renderOrder = 999;
+        const ringY_o = ringY.clone(); ringY_o.material = matYOverlay; ringY_o.userData = { gizmo: false }; ringY_o.renderOrder = 999;
+        const ringZ_o = ringZ.clone(); ringZ_o.material = matZOverlay; ringZ_o.userData = { gizmo: false }; ringZ_o.renderOrder = 999;
+        overlayRotate.add(ringX_o, ringY_o, ringZ_o);
+
+        const overlayScale = new THREE.Object3D();
+        const bx_o = bx.clone(); bx_o.material = matXOverlay; bx_o.userData = { gizmo: false }; bx_o.renderOrder = 999;
+        const by_o = by.clone(); by_o.material = matYOverlay; by_o.userData = { gizmo: false }; by_o.renderOrder = 999;
+        const bz_o = bz.clone(); bz_o.material = matZOverlay; bz_o.userData = { gizmo: false }; bz_o.renderOrder = 999;
+        overlayScale.add(bx_o, by_o, bz_o);
+
+        const overlayGroup = new THREE.Object3D();
+        overlayGroup.name = 'GizmoOverlay';
+        overlayGroup.add(overlayTranslate, overlayRotate, overlayScale);
+        overlayGroup.renderOrder = 999;
+
+        // remember overlay materials so they can be tweaked if needed
+        this._overlayMaterials = [matXOverlay, matYOverlay, matZOverlay];
+
+        // expose overlay groups so we can toggle visibility per-mode
+        this._overlayTranslate = overlayTranslate;
+        this._overlayRotate = overlayRotate;
+        this._overlayScale = overlayScale;
+        this._overlayGroup = overlayGroup;
+
         // store
         this._translateGroup = translateGroup;
         this._rotateGroup = rotateGroup;
@@ -158,6 +208,8 @@ export class Gizmo {
         this.handles.add(rotateGroup);
         this.handles.add(scaleGroup);
         this.group.add(this.handles);
+        // add overlay as a sibling under the same group so it shares transforms
+        this.group.add(overlayGroup);
 
         this.setMode(this._mode);
     }
@@ -167,6 +219,11 @@ export class Gizmo {
         this._translateGroup.visible = (mode === 'translate');
         this._rotateGroup.visible = (mode === 'rotate');
         this._scaleGroup.visible = (mode === 'scale');
+        // mirror visibility for overlay groups so only the current mode's
+        // opaque + overlay meshes are shown together.
+        if (this._overlayTranslate) this._overlayTranslate.visible = (mode === 'translate');
+        if (this._overlayRotate) this._overlayRotate.visible = (mode === 'rotate');
+        if (this._overlayScale) this._overlayScale.visible = (mode === 'scale');
         // refresh orientation/visibility immediately when mode changes
         if (this._target) this.update(true);
         return this;
@@ -423,11 +480,16 @@ export class Gizmo {
             this.group.rotation.set(0, 0, 0);
         }
 
+        let desiredWorldSize = 1.0; // fallback world size if camera calculations fail
+
+        // Note: overlay meshes are always present (added during _createVisuals)
+        // and rendered on-top (depthTest=false). No per-frame occlusion toggling
+        // is required here.
+
         // scale gizmo so it appears roughly constant on screen based on camera distance
         const rect = this.domElement.getBoundingClientRect();
         const canvasHeight = rect.height || 1;
         const cam = this.camera;
-        let desiredWorldSize = 1.0; // fallback world size if camera calculations fail
         // compute desired world-space size that corresponds to this.screenSize pixels
         try {
             if (cam.isPerspectiveCamera) {
