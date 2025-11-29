@@ -1,5 +1,38 @@
 import * as THREE from 'three';
 
+// Centralized configuration for important numeric literals used by the gizmo.
+const GIZMO_CONFIG = {
+    BASE_SIZE: 1.0,
+    DEFAULT_SCREEN_SIZE: 120,
+    DEFAULT_SCALE_MULTIPLIER: 1.0,
+
+    // visuals (multipliers of BASE_SIZE)
+    SHAFT_RADIUS: 0.03,
+    SHAFT_LENGTH: 0.6,
+    HEAD_RADIUS: 0.07,
+    HEAD_HEIGHT: 0.16,
+    HEAD_OFFSET: 0.7,
+    SHAFT_OFFSET: 0.35,
+    TORUS_RADIUS: 0.6,
+    TORUS_TUBE: 0.03,
+    BOX_SIZE: 0.12,
+    BOX_OFFSET: 0.6,
+
+    // geometry tessellation
+    CYLINDER_SEGMENTS: 8,
+    CONE_SEGMENTS: 12,
+    TORUS_RADIAL_SEGMENTS: 8,
+    TORUS_TUBULAR_SEGMENTS: 64,
+
+    // interaction
+    SCALE_SENSITIVITY: 0.5,
+    MIN_SCALE: 0.01,
+
+    // numerics
+    EPSILON: 1e-6,
+    DEFAULT_BASE: 1.0,
+};
+
 export class Gizmo {
     constructor({ renderer, camera, domElement, orbitControls, snap = { translate: 1, rotate: 15, scale: 0.1 } } = {}) {
         this.renderer = renderer;
@@ -18,8 +51,8 @@ export class Gizmo {
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
         // desired gizmo screen size in pixels (approximate) and user multiplier
-        this.screenSize = 120; // pixels the gizmo should appear roughly
-        this.screenScaleMultiplier = 1.0; // additional user multiplier
+        this.screenSize = GIZMO_CONFIG.DEFAULT_SCREEN_SIZE; // pixels the gizmo should appear roughly
+        this.screenScaleMultiplier = GIZMO_CONFIG.DEFAULT_SCALE_MULTIPLIER; // additional user multiplier
 
         this._createVisuals();
         this._bindEvents();
@@ -40,7 +73,7 @@ export class Gizmo {
         const d = r.dot(pq);
         const e = s.dot(pq);
         const denom = a * c - b * b;
-        if (Math.abs(denom) < 1e-6) {
+        if (Math.abs(denom) < GIZMO_CONFIG.EPSILON) {
             // nearly parallel: project pq onto s to get u
             const u = e / c;
             const pointOnLine = q.clone().add(s.clone().multiplyScalar(u));
@@ -53,18 +86,18 @@ export class Gizmo {
     }
 
     _createVisuals() {
-        const s = 1.0; // base visual size in local gizmo units
+        const s = GIZMO_CONFIG.BASE_SIZE; // base visual size in local gizmo units
         this.handles = new THREE.Object3D();
 
         // Translate arrows
-        const shaftGeom = new THREE.CylinderGeometry(s * 0.03, s * 0.03, s * 0.6, 8);
-        const headGeom = new THREE.ConeGeometry(s * 0.07, s * 0.16, 12);
+        const shaftGeom = new THREE.CylinderGeometry(s * GIZMO_CONFIG.SHAFT_RADIUS, s * GIZMO_CONFIG.SHAFT_RADIUS, s * GIZMO_CONFIG.SHAFT_LENGTH, GIZMO_CONFIG.CYLINDER_SEGMENTS);
+        const headGeom = new THREE.ConeGeometry(s * GIZMO_CONFIG.HEAD_RADIUS, s * GIZMO_CONFIG.HEAD_HEIGHT, GIZMO_CONFIG.CONE_SEGMENTS);
         const matX = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         const matY = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const matZ = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 
-        const headOffset = 0.7;
-        const shaftOffset = 0.35;
+        const headOffset = GIZMO_CONFIG.HEAD_OFFSET;
+        const shaftOffset = GIZMO_CONFIG.SHAFT_OFFSET;
         
         // X
         const shaftX = new THREE.Mesh(shaftGeom, matX);
@@ -98,7 +131,7 @@ export class Gizmo {
         translateGroup.add(shaftX, headX, shaftY, headY, shaftZ, headZ);
 
         // Rotation rings
-        const torusGeom = new THREE.TorusGeometry(s * 0.9, s * 0.02, 8, 64);
+        const torusGeom = new THREE.TorusGeometry(s * GIZMO_CONFIG.TORUS_RADIUS, s * GIZMO_CONFIG.TORUS_TUBE, GIZMO_CONFIG.TORUS_RADIAL_SEGMENTS, GIZMO_CONFIG.TORUS_TUBULAR_SEGMENTS);
         const ringX = new THREE.Mesh(torusGeom, matX);
         ringX.rotation.y = Math.PI / 2; ringX.userData = { gizmo: true, type: 'rotate', axis: 'X' };
         const ringY = new THREE.Mesh(torusGeom, matY);
@@ -109,10 +142,10 @@ export class Gizmo {
         rotateGroup.add(ringX, ringY, ringZ);
 
         // Scale boxes
-        const boxGeom = new THREE.BoxGeometry(s * 0.12, s * 0.12, s * 0.12);
-        const bx = new THREE.Mesh(boxGeom, matX); bx.position.set(s * 0.6, 0, 0); bx.userData = { gizmo: true, type: 'scale', axis: 'X' };
-        const by = new THREE.Mesh(boxGeom, matY); by.position.set(0, s * 0.6, 0); by.userData = { gizmo: true, type: 'scale', axis: 'Y' };
-        const bz = new THREE.Mesh(boxGeom, matZ); bz.position.set(0, 0, s * 0.6); bz.userData = { gizmo: true, type: 'scale', axis: 'Z' };
+        const boxGeom = new THREE.BoxGeometry(s * GIZMO_CONFIG.BOX_SIZE, s * GIZMO_CONFIG.BOX_SIZE, s * GIZMO_CONFIG.BOX_SIZE);
+        const bx = new THREE.Mesh(boxGeom, matX); bx.position.set(s * GIZMO_CONFIG.BOX_OFFSET, 0, 0); bx.userData = { gizmo: true, type: 'scale', axis: 'X' };
+        const by = new THREE.Mesh(boxGeom, matY); by.position.set(0, s * GIZMO_CONFIG.BOX_OFFSET, 0); by.userData = { gizmo: true, type: 'scale', axis: 'Y' };
+        const bz = new THREE.Mesh(boxGeom, matZ); bz.position.set(0, 0, s * GIZMO_CONFIG.BOX_OFFSET); bz.userData = { gizmo: true, type: 'scale', axis: 'Z' };
         const scaleGroup = new THREE.Object3D();
         scaleGroup.add(bx, by, bz);
 
@@ -134,6 +167,8 @@ export class Gizmo {
         this._translateGroup.visible = (mode === 'translate');
         this._rotateGroup.visible = (mode === 'rotate');
         this._scaleGroup.visible = (mode === 'scale');
+        // refresh orientation/visibility immediately when mode changes
+        if (this._target) this.update(true);
         return this;
     }
 
@@ -299,13 +334,13 @@ export class Gizmo {
             const currentU = closest.u;
             const delta = currentU - (this._startAxisParam || 0);
             // interpret delta as length change -> scale factor
-            let factor = 1 + delta * 0.5; // sensitivity
-            factor = Math.max(0.01, factor);
+            let factor = 1 + delta * GIZMO_CONFIG.SCALE_SENSITIVITY; // sensitivity
+            factor = Math.max(GIZMO_CONFIG.MIN_SCALE, factor);
             factor = Math.round(factor / this.snap.scale) * this.snap.scale;
             const newScale = this._startScale.clone();
-            if (this._activeHandle.axis === 'X') newScale.x = Math.max(0.01, newScale.x * factor);
-            if (this._activeHandle.axis === 'Y') newScale.y = Math.max(0.01, newScale.y * factor);
-            if (this._activeHandle.axis === 'Z') newScale.z = Math.max(0.01, newScale.z * factor);
+            if (this._activeHandle.axis === 'X') newScale.x = Math.max(GIZMO_CONFIG.MIN_SCALE, newScale.x * factor);
+            if (this._activeHandle.axis === 'Y') newScale.y = Math.max(GIZMO_CONFIG.MIN_SCALE, newScale.y * factor);
+            if (this._activeHandle.axis === 'Z') newScale.z = Math.max(GIZMO_CONFIG.MIN_SCALE, newScale.z * factor);
             obj3.scale.copy(newScale);
         }
     }
@@ -378,7 +413,15 @@ export class Gizmo {
         const worldPos = new THREE.Vector3();
         obj.getWorldPosition(worldPos);
         this.group.position.copy(worldPos);
-        this.group.rotation.set(0, 0, 0);
+        // By default keep the gizmo aligned to world axes. When in `scale` mode
+        // align the gizmo to the target's world quaternion so the scale handles
+        // follow the target's local coordinate system.
+        if (this._mode === 'scale') {
+            const q = obj.getWorldQuaternion(new THREE.Quaternion());
+            this.group.quaternion.copy(q);
+        } else {
+            this.group.rotation.set(0, 0, 0);
+        }
 
         // scale gizmo so it appears roughly constant on screen based on camera distance
         const rect = this.domElement.getBoundingClientRect();
@@ -400,11 +443,11 @@ export class Gizmo {
             }
         } catch (e) {
             // in case camera properties are missing, fall back to size
-            desiredWorldSize = this.size * UI_SCALE;
+            desiredWorldSize = GIZMO_CONFIG.DEFAULT_BASE;
         }
 
-        const base = 1.0;
-        let scaleFactor = (desiredWorldSize / base) * (this.screenScaleMultiplier || 1.0);
+        const base = GIZMO_CONFIG.DEFAULT_BASE;
+        let scaleFactor = (desiredWorldSize / base) * (this.screenScaleMultiplier || GIZMO_CONFIG.DEFAULT_SCALE_MULTIPLIER);
         if (!isFinite(scaleFactor) || scaleFactor <= 0) scaleFactor = 1.0;
         this.group.scale.setScalar(scaleFactor);
     }

@@ -55,6 +55,11 @@ const params = {
     color: '#0077ff'
 };
 
+// add scale params (controlled from GUI)
+params.scaleX = 1;
+params.scaleY = 1;
+params.scaleZ = 1;
+
 // temporary directional light params
 params.lightEnabled = true;
 params.dirIntensity = 1;
@@ -172,6 +177,10 @@ function render() {
     requestAnimationFrame(render);
     // update unified gizmo to follow selected object
     if (gizmo) gizmo.update();
+    // keep GUI in sync with selected object every frame (so gizmo drags update controls)
+    if (selectedBox && boxUI && typeof boxUI.updateFromBox === 'function') {
+        boxUI.updateFromBox(selectedBox);
+    }
     renderer.render(scene, camera);
 }
 

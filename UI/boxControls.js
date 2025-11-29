@@ -38,6 +38,24 @@ export function initBoxControls({ gui, params, getSelectedBox, setSelectedBox, c
     rotZCtrl.onChange((v) => { const sb = getSelectedBox(); if (sb) sb.setRotation(THREE.MathUtils.degToRad(params.rotX), THREE.MathUtils.degToRad(params.rotY), THREE.MathUtils.degToRad(v)); });
     rotationFolder.open();
 
+    const scaleFolder = gui.addFolder('Scale');
+    const scaleXCtrl = scaleFolder.add(params, 'scaleX', 0.01, 10, 0.01);
+    scaleXCtrl.onChange((v) => {
+        const sb = getSelectedBox();
+        if (sb) sb.getObject3D().scale.x = v;
+    });
+    const scaleYCtrl = scaleFolder.add(params, 'scaleY', 0.01, 10, 0.01);
+    scaleYCtrl.onChange((v) => {
+        const sb = getSelectedBox();
+        if (sb) sb.getObject3D().scale.y = v;
+    });
+    const scaleZCtrl = scaleFolder.add(params, 'scaleZ', 0.01, 10, 0.01);
+    scaleZCtrl.onChange((v) => {
+        const sb = getSelectedBox();
+        if (sb) sb.getObject3D().scale.z = v;
+    });
+    scaleFolder.open();
+
     const colorCtrl = gui.addColor(params, 'color');
     colorCtrl.onChange((v) => { const sb = getSelectedBox(); if (sb) sb.setColor(v); });
 
@@ -68,6 +86,10 @@ export function initBoxControls({ gui, params, getSelectedBox, setSelectedBox, c
         params.rotX = THREE.MathUtils.radToDeg(rot.x);
         params.rotY = THREE.MathUtils.radToDeg(rot.y);
         params.rotZ = THREE.MathUtils.radToDeg(rot.z);
+        const scl = box.getObject3D().scale;
+        params.scaleX = scl.x;
+        params.scaleY = scl.y;
+        params.scaleZ = scl.z;
         if (box.material && box.material.color) {
             params.color = '#' + box.material.color.getHexString();
         }
@@ -82,6 +104,9 @@ export function initBoxControls({ gui, params, getSelectedBox, setSelectedBox, c
         rotYCtrl.setValue(params.rotY);
         rotZCtrl.setValue(params.rotZ);
         colorCtrl.setValue(params.color);
+        scaleXCtrl.setValue(params.scaleX);
+        scaleYCtrl.setValue(params.scaleY);
+        scaleZCtrl.setValue(params.scaleZ);
     }
 
     return { updateFromBox };
