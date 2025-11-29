@@ -11,7 +11,7 @@ const GIZMO_CONFIG = {
     SHAFT_LENGTH: 0.6,
     HEAD_RADIUS: 0.07,
     HEAD_HEIGHT: 0.16,
-    HEAD_OFFSET: 0.7,
+    HEAD_OFFSET: 0.73,
     SHAFT_OFFSET: 0.35,
     TORUS_RADIUS: 0.6,
     TORUS_TUBE: 0.03,
@@ -27,6 +27,13 @@ const GIZMO_CONFIG = {
     // interaction
     SCALE_SENSITIVITY: 0.5,
     MIN_SCALE: 0.01,
+    // rotate sensitivity in degrees per pixel of vertical mouse movement
+    ROTATE_SENSITIVITY: 0.5,
+    // proximity-based boost: when the mouse is within ROTATE_PROXIMITY_RADIUS
+    // pixels of the object's screen position, multiply sensitivity up to
+    // ROTATE_PROXIMITY_BOOST (e.g. 2.0 => up to 2x sensitivity at zero distance)
+    ROTATE_PROXIMITY_RADIUS: 200,
+    ROTATE_PROXIMITY_BOOST: 2.0,
 
     // numerics
     EPSILON: 1e-6,
@@ -35,6 +42,11 @@ const GIZMO_CONFIG = {
     OCCLUDED_OPACITY: 0.35,
     // when object is this many times larger than gizmo size, treat as 'large'
     LARGE_OBJECT_RATIO: 10.0,
+
+    // colors
+    GIZMO_RED: 0xEE2020,
+    GIZMO_GREEN: 0x20EE20,
+    GIZMO_BLUE: 0x2020EE
 };
 
 export class Gizmo {
@@ -98,9 +110,9 @@ export class Gizmo {
         // Translate arrows
         const shaftGeom = new THREE.CylinderGeometry(s * GIZMO_CONFIG.SHAFT_RADIUS, s * GIZMO_CONFIG.SHAFT_RADIUS, s * GIZMO_CONFIG.SHAFT_LENGTH, GIZMO_CONFIG.CYLINDER_SEGMENTS);
         const headGeom = new THREE.ConeGeometry(s * GIZMO_CONFIG.HEAD_RADIUS, s * GIZMO_CONFIG.HEAD_HEIGHT, GIZMO_CONFIG.CONE_SEGMENTS);
-        const matX = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const matY = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const matZ = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const matX = new THREE.MeshBasicMaterial({ color: GIZMO_CONFIG.GIZMO_RED });
+        const matY = new THREE.MeshBasicMaterial({ color: GIZMO_CONFIG.GIZMO_GREEN });
+        const matZ = new THREE.MeshBasicMaterial({ color: GIZMO_CONFIG.GIZMO_BLUE });
 
         // keep track of materials so we can toggle occlusion visibility
         this._materials = [matX, matY, matZ];
@@ -160,9 +172,9 @@ export class Gizmo {
 
         // Overlay (transparent) visuals: duplicates of the main meshes rendered
         // on-top so the gizmo remains visible even when occluded by geometry.
-        const matXOverlay = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
-        const matYOverlay = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
-        const matZOverlay = new THREE.MeshBasicMaterial({ color: 0x0000ff, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
+        const matXOverlay = new THREE.MeshBasicMaterial({ color: GIZMO_CONFIG.GIZMO_RED, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
+        const matYOverlay = new THREE.MeshBasicMaterial({ color: GIZMO_CONFIG.GIZMO_GREEN, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
+        const matZOverlay = new THREE.MeshBasicMaterial({ color: GIZMO_CONFIG.GIZMO_BLUE, transparent: true, opacity: GIZMO_CONFIG.OCCLUDED_OPACITY, depthTest: false, depthWrite: false });
 
         const overlayTranslate = new THREE.Object3D();
         const shaftX_o = shaftX.clone(); shaftX_o.material = matXOverlay; shaftX_o.userData = { gizmo: false }; shaftX_o.renderOrder = 999;
@@ -354,32 +366,46 @@ export class Gizmo {
             if (this._activeHandle.axis === 'Y') obj3.position.y = newLocal.y;
             if (this._activeHandle.axis === 'Z') obj3.position.z = newLocal.z;
         } else if (this._activeHandle.type === 'rotate') {
-            // rotate around axis: compute angle between start vector and current vector projected on plane orthogonal to axis
-            const axis = this._axisVector(this._activeHandle.axis, obj3);
-            // plane orthogonal to axis
-            const plane = new THREE.Plane();
-            plane.setFromNormalAndCoplanarPoint(axis, this._startPosition);
+                // rotate mapping: use vertical mouse movement only (delta Y) mapped to
+                // degrees via ROTATE_SENSITIVITY. Additionally scale the sensitivity
+                // based on how close the mouse is to the object's screen position
+                // so moving the mouse near the object produces larger rotation.
+                // deltaY: positive when moving mouse down, negative when moving up.
+                const deltaY = (event && typeof event.clientY === 'number') ? (event.clientY - (this._startScreen ? this._startScreen.y : 0)) : 0;
 
-            // use stored start plane point and compute current intersection
-            const startPt = this._startPlanePoint;
-            this.raycaster.setFromCamera(this.pointer, this.camera);
-            const curPt = new THREE.Vector3();
-            this.raycaster.ray.intersectPlane(plane, curPt);
-            if (!startPt || !curPt) return;
-            const v1 = startPt.clone().sub(this._startPosition).normalize();
-            const v2 = curPt.clone().sub(this._startPosition).normalize();
-            // compute signed angle around axis
-            const angle = Math.atan2(axis.clone().dot(v1.clone().cross(v2)), v1.dot(v2));
-            // snap angle to snap.rotate degrees
-            const angleDeg = THREE.MathUtils.radToDeg(angle);
-            const snappedDeg = Math.round(angleDeg / this.snap.rotate) * this.snap.rotate;
-            const snappedRad = THREE.MathUtils.degToRad(snappedDeg);
-            // apply rotation relative to start rotation
-            const newRot = this._startRotation.clone();
-            if (this._activeHandle.axis === 'X') newRot.x = this._startRotation.x + snappedRad;
-            if (this._activeHandle.axis === 'Y') newRot.y = this._startRotation.y + snappedRad;
-            if (this._activeHandle.axis === 'Z') newRot.z = this._startRotation.z + snappedRad;
-            obj3.rotation.copy(newRot);
+                // compute proximity factor: project object's world pos to screen
+                // and measure pixel distance between mouse and object center.
+                let proximityFactor = 1.0;
+                try {
+                    const rect = this.domElement.getBoundingClientRect();
+                    const objWorld = new THREE.Vector3();
+                    obj3.getWorldPosition(objWorld);
+                    const ndc = objWorld.clone().project(this.camera);
+                    const screenX = ((ndc.x + 1) / 2) * rect.width + rect.left;
+                    const screenY = ((-ndc.y + 1) / 2) * rect.height + rect.top;
+                    const dx = (event.clientX - screenX);
+                    const dy = (event.clientY - screenY);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const radius = GIZMO_CONFIG.ROTATE_PROXIMITY_RADIUS || 200;
+                    const boost = GIZMO_CONFIG.ROTATE_PROXIMITY_BOOST || 2.0;
+                    if (dist < radius && radius > 0) {
+                        const t = 1 - (dist / radius); // 0..1 (1 when exactly on target)
+                        proximityFactor = 1 + t * (boost - 1);
+                    }
+                } catch (e) {
+                    proximityFactor = 1.0;
+                }
+
+                // map to degrees (invert sign so upward movement = positive rotation)
+                const baseSensitivity = (GIZMO_CONFIG.ROTATE_SENSITIVITY || 0.5);
+                const angleDeg = -deltaY * baseSensitivity * proximityFactor;
+                const snappedDeg = Math.round(angleDeg / this.snap.rotate) * this.snap.rotate;
+                const snappedRad = THREE.MathUtils.degToRad(snappedDeg);
+                const newRot = this._startRotation.clone();
+                if (this._activeHandle.axis === 'X') newRot.x = this._startRotation.x + snappedRad;
+                if (this._activeHandle.axis === 'Y') newRot.y = this._startRotation.y + snappedRad;
+                if (this._activeHandle.axis === 'Z') newRot.z = this._startRotation.z + snappedRad;
+                obj3.rotation.copy(newRot);
         } else if (this._activeHandle.type === 'scale') {
             // map mouse ray to closest point along axis and use delta to compute scale factor
             this.raycaster.setFromCamera(this.pointer, this.camera);

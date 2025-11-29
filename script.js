@@ -136,11 +136,12 @@ gizmo.setVisibility(false);
 window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     if (!gizmo) return;
-    if (key === 'g') {
+    // Unreal-style bindings: W = Translate, E = Rotate, R = Scale
+    if (key === 'w') {
         gizmo.setMode('translate');
-    } else if (key === 'r') {
+    } else if (key === 'e') {
         gizmo.setMode('rotate');
-    } else if (key === 's') {
+    } else if (key === 'r') {
         gizmo.setMode('scale');
     }
 });

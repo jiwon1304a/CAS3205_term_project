@@ -5,6 +5,10 @@ export class Box {
         this.group = new THREE.Object3D();
 
         const geometry = new THREE.BoxGeometry(width, height, depth);
+        // Move geometry so that the box corner is at the local origin (0,0,0).
+        // By default BoxGeometry is centered at the origin; translate it by
+        // half-extents so one corner lies at (0,0,0).
+        geometry.translate(width / 2, height / 2, depth / 2);
         this.material = new THREE.MeshStandardMaterial({ color, metalness, roughness });
         this.mesh = new THREE.Mesh(geometry, this.material);
         this.mesh.castShadow = true;
@@ -42,7 +46,9 @@ export class Box {
             depth = width;
         }
         this.mesh.geometry.dispose();
-        this.mesh.geometry = new THREE.BoxGeometry(width, height, depth);
+        const geom = new THREE.BoxGeometry(width, height, depth);
+        geom.translate(width / 2, height / 2, depth / 2);
+        this.mesh.geometry = geom;
         return this;
     }
 
