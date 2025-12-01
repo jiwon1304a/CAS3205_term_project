@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import BaseObject from './Object.js';
+import Mesh from './Mesh.js';
 
-export class Skybox extends BaseObject {
+export class Skybox extends Mesh {
     /**
      * options:
      *  - size: outer size of box (default 500)
@@ -21,15 +21,12 @@ export class Skybox extends BaseObject {
 
     _createMesh() {
         if (this.mesh) {
-            this.group.remove(this.mesh);
-            if (this.mesh.geometry) this.mesh.geometry.dispose();
-            if (Array.isArray(this.mesh.material)) this.mesh.material.forEach(m => m.dispose());
-            else if (this.mesh.material) this.mesh.material.dispose();
-            this.mesh = null;
+            // reuse setMesh to replace existing mesh
+            try { if (this.group) this.group.remove(this.mesh); } catch (e) {}
         }
 
         const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
-
+        let createdMesh = null;
         if (this.images && Array.isArray(this.images) && this.images.length === 6) {
             const loader = new THREE.TextureLoader();
             const materials = this.images.map((url) => {
@@ -37,14 +34,14 @@ export class Skybox extends BaseObject {
                 const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide });
                 return mat;
             });
-            this.mesh = new THREE.Mesh(geometry, materials);
+            createdMesh = new THREE.Mesh(geometry, materials);
         } else {
             const mat = new THREE.MeshBasicMaterial({ color: this.color, side: THREE.BackSide });
-            this.mesh = new THREE.Mesh(geometry, mat);
+            createdMesh = new THREE.Mesh(geometry, mat);
         }
 
-        this.mesh.frustumCulled = false;
-        this.group.add(this.mesh);
+        createdMesh.frustumCulled = false;
+        this.setMesh(createdMesh);
     }
 
     applyAsBackground(scene) {

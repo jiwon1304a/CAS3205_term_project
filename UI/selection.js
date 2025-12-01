@@ -53,16 +53,17 @@ export function initSelection({ renderer, camera, scene, raycaster, pointer, onS
         _computePointer(event);
         raycaster.setFromCamera(pointer, camera);
         const intersects = raycaster.intersectObjects(scene.children, true);
-        let foundBox = null;
+        let found = null;
         for (let i = 0; i < intersects.length; i++) {
             const obj = intersects[i].object;
-            if (obj.userData && obj.userData.box) {
-                foundBox = obj.userData.box;
-                break;
-            }
+            if (!obj.userData) continue;
+            // support boxes (old), lights (new), or any selectable wrapper via userData.selectable
+            if (obj.userData.selectable) { found = obj.userData.selectable; break; }
+            if (obj.userData.box) { found = obj.userData.box; break; }
+            if (obj.userData.light) { found = obj.userData.light; break; }
         }
-        if (foundBox) {
-            onSelect(foundBox);
+        if (found) {
+            onSelect(found);
         } else {
             onDeselect();
         }

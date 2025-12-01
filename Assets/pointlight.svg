@@ -1,0 +1,26 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" fill="none">
+
+  <!-- Outer glow circle -->
+  <circle cx="64" cy="64" r="40" stroke="#FFD54A" stroke-width="6" stroke-dasharray="4 8" opacity="0.9"></circle>
+
+  <!-- Bulb glass (classic rounded top) -->
+  <path d="
+           M64 30
+           C48 30, 38 45, 38 58
+           C38 72, 48 82, 55 90
+           L55 100
+           L73 100
+           L73 90
+           C80 82, 90 72, 90 58
+           C90 45, 80 30, 64 30Z" stroke="#FFC800" stroke-width="6" fill="none"></path>
+
+  <!-- Rectangular base -->
+  <rect x="55" y="100" width="18" height="18" stroke="#FFC800" stroke-width="6" fill="none"></rect>
+
+  <!-- Screw lines -->
+  <line x1="55" y1="108" x2="73" y2="108" stroke="#FFC800" stroke-width="4"></line>
+  <line x1="55" y1="114" x2="73" y2="114" stroke="#FFC800" stroke-width="4"></line>
+
+  <!-- Filament -->
+  <path d="M52 60 Q64 70 76 60" stroke="#FFC800" stroke-width="4" fill="none"></path>
+</svg>

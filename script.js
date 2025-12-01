@@ -6,18 +6,19 @@ import { Floor } from './Object/Floor.js';
 import { Box } from './Object/Box.js';
 // support multiple selectable boxes
 import { Skybox } from './Object/Skybox.js';
+import { DirectionalLight, PointLight, Spotlight } from './Object/Light.js';
 // UI modules
 import { createGUI } from './UI/gui.js';
-import { initBoxControls } from './UI/boxControls.js';
+import { initObjectControls } from './UI/objectControls.js';
 import { initLightControls } from './UI/lightControls.js';
-import { initSkyboxControls } from './UI/skyboxControls.js';
+import { initMeshControls } from './UI/meshControls.js';
 import { initSelection } from './UI/selection.js';
 import { Gizmo } from './UI/gizmo.js';
 
 let myBox;
 let myFloor;
 const boxes = [];
-let selectedBox = null;
+let selectedObject = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let gizmo = null;
@@ -81,8 +82,8 @@ myBox = new Box({ width: params.width, height: params.height, depth: params.dept
 myBox.addTo(scene);
 boxes.push(myBox);
 // select initial box
-selectedBox = myBox;
-selectedBox.setSelected(true);
+selectedObject = myBox;
+selectedObject.setSelected(true);
 
 function createBox({ width = 1, height = 1, depth = 1, color = 0x0077ff, position = { x: 0, y: 0, z: 0 } } = {}) {
     const b = new Box({ width, height, depth, color, position });
@@ -94,37 +95,88 @@ function createBox({ width = 1, height = 1, depth = 1, color = 0x0077ff, positio
 // create skybox and add to scene
 const sky = new Skybox({ size: params.skySize, color: params.skyColor }).setVisibility(params.skyVisible).addTo(scene);
 
-// temporary directional light (additional)
-const dirLightTemp = new THREE.DirectionalLight(0xffffff, params.dirIntensity);
-dirLightTemp.position.set(params.dirX, params.dirY, params.dirZ);
-dirLightTemp.visible = params.lightEnabled;
-scene.add(dirLightTemp);
-
-const dirHelper = new THREE.DirectionalLightHelper(dirLightTemp, 5);
-dirHelper.visible = params.lightEnabled && params.showDirHelper;
-scene.add(dirHelper);
 
 const gui = createGUI();
 
 // initialize UI modules
-const boxUI = initBoxControls({ gui, params,
-    getSelectedBox: () => selectedBox,
-    setSelectedBox: (b) => {
-        if (selectedBox && selectedBox !== b) selectedBox.setSelected(false);
-        selectedBox = b;
-        if (selectedBox) selectedBox.setSelected(true);
-        // update box UI from selection
-        if (boxUI && typeof boxUI.updateFromBox === 'function') boxUI.updateFromBox(selectedBox);
-    },
-    createBox
+// ensure params contain fields used by mesh/light controls
+params.selectedLightIntensity = params.selectedLightIntensity || 1;
+params.selectedLightColor = params.selectedLightColor || '#ffffff';
+
+const objectUI = initObjectControls({ gui, params,
+    getSelectedObject: () => selectedObject,
+    setSelectedObject: (o) => {
+        if (selectedObject && selectedObject !== o && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(false);
+        selectedObject = o;
+        if (selectedObject && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(true);
+        if (objectUI && typeof objectUI.updateFromObject === 'function') objectUI.updateFromObject(selectedObject);
+    }
 });
 
-// Light controls (moved to UI module)
-initLightControls({ gui, params, dirLightTemp, dirHelper });
+// provide an Add Box button in the top-level script so creation is centralized
+gui.add({ addBox: () => {
+    const px = (Math.random() * 40) - 20;
+    const pz = (Math.random() * 40) - 20;
+    const b = createBox({ color: Math.floor(Math.random()*0xffffff), position: { x: px, y: 1 + Math.random()*2, z: pz } });
+    if (b && b.getObject3D) {
+        const sx = 1 + Math.random() * 3;
+        const sy = 1 + Math.random() * 3;
+        const sz = 1 + Math.random() * 3;
+        b.getObject3D().scale.set(sx, sy, sz);
+    }
+    // select the newly-created box
+    if (selectedObject && selectedObject !== b && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(false);
+    selectedObject = b;
+    if (selectedObject && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(true);
+    if (objectUI && typeof objectUI.updateFromObject === 'function') objectUI.updateFromObject(selectedObject);
+} }, 'addBox').name('Add Box');
 
-// Skybox controls
-// Skybox controls (moved to UI module)
-initSkyboxControls({ gui, params, sky, scene });
+
+const dierctionalLightIcon = 'Assets/directionallight.svg';
+const pointLightIcon = 'Assets/pointlight.svg';
+const spotlightIcon = 'Assets/spotlight.svg';
+const iconSize = 5;
+
+// Light controls (moved to UI module) — provide factory callbacks
+const lightUI = initLightControls({ gui, params,
+    createDirectional: () => {
+        const dl = new DirectionalLight({ color: 0xffffff, intensity: params.dirIntensity, position: new THREE.Vector3(params.dirX, params.dirY, params.dirZ), name: 'DirectionalLight', icon: dierctionalLightIcon, iconSize: iconSize });
+        dl.addTo(scene);
+        // sync helper visibility with params (helper created by class)
+        if (typeof dl.setHelperVisible === 'function') dl.setHelperVisible(params.showDirHelper);
+        return dl;
+    },
+    createPoint: () => {
+        const pl = new PointLight({ color: 0xffffff, intensity: 1, position: new THREE.Vector3(0, 5, 0), distance: 0, decay: 1, name: 'PointLight', icon: pointLightIcon, iconSize: iconSize });
+        pl.addTo(scene);
+        return pl;
+    },
+    createSpot: () => {
+        const sl = new Spotlight({ color: 0xffffff, intensity: 1, position: new THREE.Vector3(0, 10, 0), angle: Math.PI / 6, distance: 0, penumbra: 0, decay: 1, name: 'Spotlight', icon: spotlightIcon, iconSize: iconSize });
+        sl.addTo(scene);
+        return sl;
+    },
+    getSelectedLight: () => (selectedObject && typeof selectedObject.getLight === 'function') ? selectedObject : null
+});
+
+// mesh controls (color) — operate on selected mesh-like objects
+const meshUI = initMeshControls({ gui, params,
+    getSelectedMesh: () => {
+        // treat any selected object that exposes a material or setColor as a mesh
+        if (!selectedObject) return null;
+        const obj3d = selectedObject.getObject3D ? selectedObject.getObject3D() : selectedObject;
+        if (selectedObject && (typeof selectedObject.setColor === 'function' || (obj3d && obj3d.material && obj3d.material.color))) return selectedObject;
+        return null;
+    },
+    setSelectedMesh: (m) => {
+        if (selectedObject && selectedObject !== m && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(false);
+        selectedObject = m;
+        if (selectedObject && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(true);
+        if (meshUI && typeof meshUI.updateFromMesh === 'function') meshUI.updateFromMesh(selectedObject);
+    }
+});
+
+// Skybox controls removed; skybox is created above and can be edited via Object controls.
 
 // Transform (gizmo) controls
 // create unified gizmo (visuals + interaction + snapping)
@@ -146,28 +198,33 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
-// boxUI provides updateFromBox
-const updateParamsFromSelected = (boxUI && typeof boxUI.updateFromBox === 'function') ? boxUI.updateFromBox : (() => {});
+// objectUI provides updateFromObject; keep boxUI available for quick-box-only tweaks
+const updateParamsFromSelected = (objectUI && typeof objectUI.updateFromObject === 'function') ? objectUI.updateFromObject : (() => {});
 
 // pointer / raycast selection
 // Pointer selection handled by UI selection module
 initSelection({ renderer, camera, scene, raycaster, pointer,
-    onSelect: (foundBox) => {
-        if (selectedBox && selectedBox !== foundBox) selectedBox.setSelected(false);
-        selectedBox = foundBox;
-        selectedBox.setSelected(true);
-        updateParamsFromSelected(selectedBox);
-        // attach and show unified gizmo
-        if (gizmo) { gizmo.attach(foundBox); gizmo.setVisibility(true); gizmo.setMode('translate'); }
-        console.log('Selected box', selectedBox);
+    onSelect: (found) => {
+        if (selectedObject && selectedObject !== found && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(false);
+        selectedObject = found;
+        if (selectedObject && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(true);
+        // update the generic object UI from the current selection
+        if (objectUI && typeof objectUI.updateFromObject === 'function') {
+            objectUI.updateFromObject(selectedObject);
+        }
+        // update mesh UI if applicable
+        if (meshUI && typeof meshUI.updateFromMesh === 'function') meshUI.updateFromMesh(selectedObject);
+        // update light UI if applicable
+        if (typeof lightUI !== 'undefined' && lightUI && typeof lightUI.updateFromLight === 'function') lightUI.updateFromLight(selectedObject);
+        // attach and show unified gizmo for any selectable object
+        if (gizmo) { gizmo.attach(found); gizmo.setVisibility(true); gizmo.setMode('translate'); }
+        console.log('Selected', selectedObject);
     },
     onDeselect: () => {
-        if (selectedBox) {
-            selectedBox.setSelected(false);
-            selectedBox = null;
-            // detach unified gizmo
-            if (gizmo) { gizmo.detach(); gizmo.setVisibility(false); }
-        }
+        if (selectedObject && typeof selectedObject.setSelected === 'function') selectedObject.setSelected(false);
+        selectedObject = null;
+        // detach unified gizmo
+        if (gizmo) { gizmo.detach(); gizmo.setVisibility(false); }
     }
 });
 
@@ -178,9 +235,15 @@ function render() {
     requestAnimationFrame(render);
     // update unified gizmo to follow selected object
     if (gizmo) gizmo.update();
-    // keep GUI in sync with selected object every frame (so gizmo drags update controls)
-    if (selectedBox && boxUI && typeof boxUI.updateFromBox === 'function') {
-        boxUI.updateFromBox(selectedBox);
+        // keep GUI in sync with selected object every frame (so gizmo drags update controls)
+    if (selectedObject && objectUI && typeof objectUI.updateFromObject === 'function') {
+        objectUI.updateFromObject(selectedObject);
+    }
+    if (selectedObject && meshUI && typeof meshUI.updateFromMesh === 'function') {
+        meshUI.updateFromMesh(selectedObject);
+    }
+    if (selectedObject && typeof lightUI !== 'undefined' && lightUI && typeof lightUI.updateFromLight === 'function') {
+        lightUI.updateFromLight(selectedObject);
     }
     renderer.render(scene, camera);
 }

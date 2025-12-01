@@ -1,8 +1,7 @@
-export function initSkyboxControls({ gui, params, sky, scene }) {
-    const skyFolder = gui.addFolder('Skybox');
-    skyFolder.add(params, 'skyVisible').name('Visible').onChange((v) => sky.setVisibility(v));
-    skyFolder.add(params, 'skySize', 100, 5000, 1).name('Size').onChange((v) => sky.setSize(v));
-    skyFolder.addColor(params, 'skyColor').name('Color').onChange((v) => sky.setColor(v));
-    skyFolder.add({ applyAsBackground: () => sky.applyAsBackground(scene) }, 'applyAsBackground').name('Apply as Background');
-    skyFolder.open();
+// Deprecated: Skybox controls removed in favor of generic object controls.
+// This file has been cleared. Use `initObjectControls` in `UI/objectControls.js`
+// for generic object editing. Calling the old skybox-specific API will throw
+// so imports using it fail loudly and prompt migration.
+export function initSkyboxControls() {
+    throw new Error('initSkyboxControls has been removed. Use initObjectControls instead.');
 }
