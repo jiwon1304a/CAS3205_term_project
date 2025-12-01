@@ -24,7 +24,12 @@ export class Floor extends Mesh {
     setPosition(x = 0, y = 0, z = 0) { super.setPosition(new THREE.Vector3(x, y, z)); return this; }
     setColor(color) { if (this.material) this.material.color.set(color); return this; }
     setSize(width = 100, depth = 100) { if (!this.mesh) return this; this.mesh.geometry.dispose(); this.mesh.geometry = new THREE.PlaneGeometry(width, depth); return this; }
-    addTo(parent) { if (parent && typeof parent.add === 'function') parent.add(this.group); return this; }
+    addTo(parent) { 
+        if (!parent) return this;
+        const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
+        if (target && typeof target.add === 'function') target.add(this.group);
+        return this;
+    }
     getObject3D() { return this.group; }
 }
 

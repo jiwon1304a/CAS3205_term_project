@@ -6,6 +6,9 @@ export class Mesh extends BaseObject {
     constructor({ mesh = null, geometry = null, material = null, position = new THREE.Vector3(), name = '' } = {}) {
         super({ position, name });
         this.mesh = null;
+        // shadow flags (controlled on this wrapper and forwarded to underlying mesh)
+        this.castShadow = true;
+        this.receiveShadow = true;
         if (mesh) {
             this.setMesh(mesh);
         } else if (geometry) {
@@ -18,7 +21,25 @@ export class Mesh extends BaseObject {
         if (!m) return this;
         if (this.mesh && this.group) this.group.remove(this.mesh);
         this.mesh = m;
-        if (this.mesh) this.group.add(this.mesh);
+        if (this.mesh) {
+            // ensure shadow flags are applied to the underlying THREE.Mesh
+            this.mesh.castShadow = !!this.castShadow;
+            this.mesh.receiveShadow = !!this.receiveShadow;
+            this.group.add(this.mesh);
+        }
+        return this;
+    }
+
+    // Convenience setters to control shadows on the wrapped mesh
+    setCastShadow(enabled = true) {
+        this.castShadow = !!enabled;
+        if (this.mesh) this.mesh.castShadow = this.castShadow;
+        return this;
+    }
+
+    setReceiveShadow(enabled = true) {
+        this.receiveShadow = !!enabled;
+        if (this.mesh) this.mesh.receiveShadow = this.receiveShadow;
         return this;
     }
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { initOrbitControls } from './util.js';
+import { SHADOW } from './Settings.js';
 
 import { Floor } from './Object/Floor.js';
 import { Box } from './Object/Box.js';
@@ -32,15 +33,28 @@ scene.add(camera);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+// enable shadow map on renderer so lights/meshes can cast/receive shadows
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const orbitControls = initOrbitControls(camera, renderer);
 
-const light = new THREE.DirectionalLight(0xffffff, 1);
+const light = new THREE.DirectionalLight(0xffffff, 1.0);
 light.position.set(10, 20, 10);
+// enable shadows for this directional light and configure its shadow camera
+light.castShadow = true;
+light.shadow.mapSize.width = SHADOW.mapSize;
+light.shadow.mapSize.height = SHADOW.mapSize;
+const half = SHADOW.dirCameraHalfSize;
+light.shadow.camera.left = -half;
+light.shadow.camera.right = half;
+light.shadow.camera.top = half;
+light.shadow.camera.bottom = -half;
+light.shadow.camera.near = SHADOW.dirNear;
+light.shadow.camera.far = SHADOW.dirFar;
+light.shadow.bias = SHADOW.bias;
+if (light.shadow && light.shadow.camera && typeof light.shadow.camera.updateProjectionMatrix === 'function') light.shadow.camera.updateProjectionMatrix();
 scene.add(light);
-
-const ambientLight = new THREE.AmbientLight(0x404040);
-scene.add(ambientLight);
 
 // Parameters for the box and GUI
 const params = {
@@ -74,7 +88,7 @@ params.skySize = 1000;
 params.skyVisible = true;
 
 // plane
-myFloor = new Floor({ width: 200, depth: 200, color: '#00FF00', grid: true }).setPosition(0, 0, 0);
+myFloor = new Floor({ width: 200, depth: 200, color: '#00FF00', grid: true, }).setPosition(0, 0, 0);
 myFloor.addTo(scene);
 
 // create initial box

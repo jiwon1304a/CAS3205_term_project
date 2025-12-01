@@ -91,6 +91,9 @@ export default Object;
 
 // Convenience: allow adding this object's root to another parent
 Object.prototype.addTo = function (parent) {
-    if (parent && typeof parent.add === 'function') parent.add(this._object3D);
+    if (!parent) return this;
+    // If parent is a wrapper using getObject3D, use that underlying Object3D
+    const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
+    if (target && typeof target.add === 'function') target.add(this._object3D);
     return this;
 };

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import BaseObject from './Object.js';
+import { SHADOW, LIGHT_DEFAULTS } from '../Settings.js';
 
 // Base Light wrapper
 export class Light extends BaseObject {
@@ -60,7 +61,8 @@ export class Light extends BaseObject {
             sprite.userData.selectable = that;
             sprite.userData.light = that;
             that.group.add(sprite);
-            that._iconSprite = sprite;
+            that.attach(sprite);
+            sprite.parent = that;
         });
         return this;
     }
@@ -102,7 +104,12 @@ export class Light extends BaseObject {
     // maintain same API shape as other objects
     setPosition(x = 0, y = 0, z = 0) { super.setPosition(new THREE.Vector3(x, y, z)); this.updateHelper(); return this; }
 
-    addTo(parent) { if (parent && typeof parent.add === 'function') parent.add(this.group); return this; }
+    addTo(parent) { 
+        if (!parent) return this;
+        const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
+        if (target && typeof target.add === 'function') target.add(this.group);
+        return this;
+    }
     getObject3D() { return this.group; }
 
     dispose() {
@@ -158,10 +165,24 @@ export class Light extends BaseObject {
 
 // DirectionalLight wrapper
 export class DirectionalLight extends Light {
-    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), target = null, castShadow = false, name = '', icon = null, iconSize = 1 } = {}) {
+    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), target = null, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.DirectionalLight(this.color, this.intensity);
         this.light.castShadow = !!castShadow;
+        // apply centralized shadow settings
+        try {
+            this.light.shadow.mapSize.width = SHADOW.mapSize;
+            this.light.shadow.mapSize.height = SHADOW.mapSize;
+            const half = SHADOW.dirCameraHalfSize;
+            this.light.shadow.camera.left = -half;
+            this.light.shadow.camera.right = half;
+            this.light.shadow.camera.top = half;
+            this.light.shadow.camera.bottom = -half;
+            this.light.shadow.camera.near = SHADOW.dirNear;
+            this.light.shadow.camera.far = SHADOW.dirFar;
+            this.light.shadow.bias = SHADOW.bias;
+            if (this.light.shadow && this.light.shadow.camera && typeof this.light.shadow.camera.updateProjectionMatrix === 'function') this.light.shadow.camera.updateProjectionMatrix();
+        } catch (e) {}
         // keep the underlying light at the group's local origin; the group's
         // world position (set by BaseObject) determines world placement.
         this.light.position.set(0, 0, 0);
@@ -204,10 +225,14 @@ export class DirectionalLight extends Light {
 
 // PointLight wrapper
 export class PointLight extends Light {
-    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), distance = 0, decay = 1, castShadow = false, name = '', icon = null, iconSize = 1 } = {}) {
+    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), distance = 0, decay = 1, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.PointLight(this.color, this.intensity, distance, decay);
         this.light.castShadow = !!castShadow;
+        try {
+            this.light.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.point && LIGHT_DEFAULTS.point.mapSize) ? LIGHT_DEFAULTS.point.mapSize : SHADOW.mapSize;
+            this.light.shadow.mapSize.height = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.point && LIGHT_DEFAULTS.point.mapSize) ? LIGHT_DEFAULTS.point.mapSize : SHADOW.mapSize;
+        } catch (e) {}
         // place light at local origin (group manages world position)
         this.light.position.set(0, 0, 0);
         this.group.add(this.light);
@@ -229,10 +254,14 @@ export class PointLight extends Light {
 
 // SpotLight wrapper
 export class Spotlight extends Light {
-    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), target = null, distance = 0, angle = Math.PI / 6, penumbra = 0, decay = 1, castShadow = false, name = '', icon = null, iconSize = 1 } = {}) {
+    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), target = null, distance = 0, angle = Math.PI / 6, penumbra = 0, decay = 1, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.SpotLight(this.color, this.intensity, distance, angle, penumbra, decay);
         this.light.castShadow = !!castShadow;
+        try {
+            this.light.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
+            this.light.shadow.mapSize.height = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
+        } catch (e) {}
         // place light at local origin (group manages world position)
         this.light.position.set(0, 0, 0);
 

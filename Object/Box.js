@@ -45,7 +45,12 @@ export class Box extends Mesh {
         return this;
     }
 
-    move(dx = 0, dy = 0, dz = 0) { this.group.position.x += dx; this.group.position.y += dy; this.group.position.z += dz; return this; }
+    move(dx = 0, dy = 0, dz = 0) {
+        this.group.position.x += dx;
+        this.group.position.y += dy;
+        this.group.position.z += dz;
+        return this;
+    }
 
     rotate(x = 0, y = 0, z = 0, inDegrees = false) {
         if (inDegrees) {
@@ -59,8 +64,18 @@ export class Box extends Mesh {
         return this;
     }
 
-    addTo(parent) { if (parent && typeof parent.add === 'function') parent.add(this.group); return this; }
+    addTo(parent) { 
+        if (!parent) return this;
+        const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
+        if (target && typeof target.add === 'function') target.add(this.group);
+        return this;
+    }
     getObject3D() { return this.group; }
+
+    // Getters
+    getMesh() { return super.getMesh ? super.getMesh() : (this.mesh || null); }
+    getMaterial() { return this.material || (this.mesh && this.mesh.material) || null; }
+    isSelected() { return !!this._selected; }
 }
 
 export default Box;

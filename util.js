@@ -1,6 +1,7 @@
 import * as THREE from 'three';  
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import Stats from 'three/addons/libs/stats.module.js';
+import { SHADOW, LIGHT_DEFAULTS } from './Settings.js';
 
 /**
  * Initialize the statistics domelement
@@ -74,16 +75,16 @@ export function initDefaultLighting(scene, initialPosition) {
 
     const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.3);
     directionalLight1.position.copy(position);
-    directionalLight1.shadow.mapSize.width = 2048;
-    directionalLight1.shadow.mapSize.height = 2048;
+    directionalLight1.shadow.mapSize.width = SHADOW.mapSize;
+    directionalLight1.shadow.mapSize.height = SHADOW.mapSize;
     directionalLight1.shadow.camera.fov = 15;
     directionalLight1.name = "directionalLight1";
     //scene.add(directionalLight1);
     
     const spotLight = new THREE.SpotLight(0xffffff, 5000);
     spotLight.position.copy(position);
-    spotLight.shadow.mapSize.width = 2048;
-    spotLight.shadow.mapSize.height = 2048;
+    spotLight.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
+    spotLight.shadow.mapSize.height = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
     spotLight.shadow.camera.fov = 15;
     spotLight.castShadow = true;
     spotLight.decay = 2;
@@ -103,14 +104,19 @@ export function initDefaultDirectionalLighting(scene, initialPosition) {
     
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.copy(position);
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.mapSize.width = SHADOW.mapSize;
+    dirLight.shadow.mapSize.height = SHADOW.mapSize;
     dirLight.castShadow = true;
 
-    dirLight.shadow.camera.left = -200;
-    dirLight.shadow.camera.right = 200;
-    dirLight.shadow.camera.top = 200;
-    dirLight.shadow.camera.bottom = -200;
+    const half = SHADOW.dirCameraHalfSize;
+    dirLight.shadow.camera.left = -half;
+    dirLight.shadow.camera.right = half;
+    dirLight.shadow.camera.top = half;
+    dirLight.shadow.camera.bottom = -half;
+    dirLight.shadow.camera.near = SHADOW.dirNear;
+    dirLight.shadow.camera.far = SHADOW.dirFar;
+    dirLight.shadow.bias = SHADOW.bias;
+    if (dirLight.shadow && dirLight.shadow.camera && typeof dirLight.shadow.camera.updateProjectionMatrix === 'function') dirLight.shadow.camera.updateProjectionMatrix();
 
     scene.add(dirLight);
 
