@@ -17,7 +17,6 @@ export class Floor extends Mesh {
             const size = Math.max(width, depth);
             const divisions = Math.floor(size / 2);
             this.gridHelper = new THREE.GridHelper(size, divisions, 0x444444, 0x888888);
-            this.group.add(this.gridHelper);
         }
     }
 
@@ -27,10 +26,10 @@ export class Floor extends Mesh {
     addTo(parent) { 
         if (!parent) return this;
         const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
-        if (target && typeof target.add === 'function') target.add(this.group);
+        if (target && typeof target.add === 'function') target.add(this.mesh);
         return this;
     }
-    getObject3D() { return this.group; }
+    getObject3D() { return this.mesh; }
 }
 
 export default Floor;

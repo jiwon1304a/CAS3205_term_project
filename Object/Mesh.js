@@ -19,13 +19,12 @@ export class Mesh extends BaseObject {
 
     setMesh(m) {
         if (!m) return this;
-        if (this.mesh && this.group) this.group.remove(this.mesh);
         this.mesh = m;
         if (this.mesh) {
             // ensure shadow flags are applied to the underlying THREE.Mesh
             this.mesh.castShadow = !!this.castShadow;
             this.mesh.receiveShadow = !!this.receiveShadow;
-            this.group.add(this.mesh);
+            this._object3D.add(this.mesh);
         }
         return this;
     }
@@ -78,7 +77,6 @@ export class Mesh extends BaseObject {
                 if (Array.isArray(this.mesh.material)) this.mesh.material.forEach(m => m && m.dispose && m.dispose());
                 else if (this.mesh.material.dispose) this.mesh.material.dispose();
             }
-            try { if (this.group) this.group.remove(this.mesh); } catch (e) {}
             this.mesh = null;
         }
         if (super.dispose) super.dispose();

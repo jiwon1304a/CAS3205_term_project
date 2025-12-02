@@ -9,14 +9,21 @@
             "port": 5500,
             "request": "attach",
             "type": "chrome",
-            "webRoot": "${workspaceFolder}/index.html"
+            "webRoot": "${workspaceFolder}"
         },
         {
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
             "url": "http://localhost:8080",
-            "file": "${workspaceFolder}/index.html"
+            "file": "${workspaceFolder}/index.html",
+            "webRoot": "${workspaceFolder}",
+            "preLaunchTask": "npm: start",
+            // map served URLs back to local workspace files so breakpoints bind correctly
+            "sourceMapPathOverrides": {
+                "/*": "${webRoot}/*",
+                "~/src/*": "${webRoot}/*"
+            }
         }
     ]
 }

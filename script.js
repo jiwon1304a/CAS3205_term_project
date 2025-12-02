@@ -39,23 +39,6 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const orbitControls = initOrbitControls(camera, renderer);
 
-const light = new THREE.DirectionalLight(0xffffff, 1.0);
-light.position.set(10, 20, 10);
-// enable shadows for this directional light and configure its shadow camera
-light.castShadow = true;
-light.shadow.mapSize.width = SHADOW.mapSize;
-light.shadow.mapSize.height = SHADOW.mapSize;
-const half = SHADOW.dirCameraHalfSize;
-light.shadow.camera.left = -half;
-light.shadow.camera.right = half;
-light.shadow.camera.top = half;
-light.shadow.camera.bottom = -half;
-light.shadow.camera.near = SHADOW.dirNear;
-light.shadow.camera.far = SHADOW.dirFar;
-light.shadow.bias = SHADOW.bias;
-if (light.shadow && light.shadow.camera && typeof light.shadow.camera.updateProjectionMatrix === 'function') light.shadow.camera.updateProjectionMatrix();
-scene.add(light);
-
 // Parameters for the box and GUI
 const params = {
     width: 4,
@@ -107,7 +90,7 @@ function createBox({ width = 1, height = 1, depth = 1, color = 0x0077ff, positio
 }
 
 // create skybox and add to scene
-const sky = new Skybox({ size: params.skySize, color: params.skyColor }).setVisibility(params.skyVisible).addTo(scene);
+const sky = new Skybox({ size: params.skySize, color: params.skyColor }).addTo(scene);
 
 
 const gui = createGUI();
@@ -161,7 +144,7 @@ const lightUI = initLightControls({ gui, params,
         return dl;
     },
     createPoint: () => {
-        const pl = new PointLight({ color: 0xffffff, intensity: 1, position: new THREE.Vector3(0, 5, 0), distance: 0, decay: 1, name: 'PointLight', icon: pointLightIcon, iconSize: iconSize });
+        const pl = new PointLight({ color: 0xffffff, intensity: 1000, position: new THREE.Vector3(0, 5, 0), distance: 100, decay: 2, name: 'PointLight', icon: pointLightIcon, iconSize: iconSize });
         pl.addTo(scene);
         return pl;
     },

@@ -44,7 +44,6 @@ export class Light extends BaseObject {
         loader.load(path, function (tex) {
             // dispose previous sprite if exists
             if (that._iconSprite) {
-                try { that.group.remove(that._iconSprite); } catch (e) {}
                 if (that._iconSprite.material && that._iconSprite.material.map && that._iconSprite.material.map.dispose) {
                     // don't dispose texture passed externally
                 }
@@ -60,16 +59,13 @@ export class Light extends BaseObject {
             sprite.userData = sprite.userData || {};
             sprite.userData.selectable = that;
             sprite.userData.light = that;
-            that.group.add(sprite);
-            that.attach(sprite);
-            sprite.parent = that;
+            that.light.add(sprite);
         });
         return this;
     }
 
     removeIcon() {
         if (!this._iconSprite) return this;
-        try { this.group.remove(this._iconSprite); } catch (e) {}
         if (this._iconSprite.material && this._iconSprite.material.map && this._iconSprite.material.map.dispose) this._iconSprite.material.map.dispose();
         if (this._iconSprite.material && this._iconSprite.material.dispose) this._iconSprite.material.dispose();
         this._iconSprite = null;
@@ -106,28 +102,24 @@ export class Light extends BaseObject {
 
     addTo(parent) { 
         if (!parent) return this;
-        const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
-        if (target && typeof target.add === 'function') target.add(this.group);
+        if (parent) parent.add(this.light);
         return this;
     }
-    getObject3D() { return this.group; }
+    getObject3D() { return this.light; }
 
     dispose() {
         // remove light from group (no explicit dispose on Light)
         if (this.light) {
-            try { if (this.group) this.group.remove(this.light); } catch (e) {}
             this.light = null;
         }
         // remove icon sprite if present
         if (this._iconSprite) {
-            try { if (this.group) this.group.remove(this._iconSprite); } catch (e) {}
             if (this._iconSprite.material && this._iconSprite.material.map && this._iconSprite.material.map.dispose) this._iconSprite.material.map.dispose();
             if (this._iconSprite.material && this._iconSprite.material.dispose) this._iconSprite.material.dispose();
             this._iconSprite = null;
         }
         // remove helper if present
         if (this._helper) {
-            try { if (this.group) this.group.remove(this._helper); } catch (e) {}
             this._helper = null;
         }
         if (super.dispose) super.dispose();
@@ -143,31 +135,32 @@ export class Light extends BaseObject {
     getHelper() { return this._helper; }
 
     updateHelper() {
-        if (!this._helper) return this;
-        // If helper exists, try to anchor it to this wrapper's world transform so
-        // it appears exactly where the light wrapper is placed. Some helpers
-        // compute internal positions at creation time and don't follow parent
-        // transforms automatically; copying the group's world matrix keeps the
-        // helper aligned with the wrapper.
-        try {
-            if (this.group && this.group.matrixWorld && this._helper.matrix) {
-                this._helper.matrix.copy(this.group.matrixWorld);
-                this._helper.matrixAutoUpdate = false;
-                this._helper.matrixWorldNeedsUpdate = true;
-            }
-        } catch (e) {}
-        if (typeof this._helper.update === 'function') {
-            try { this._helper.update(); } catch (e) {}
-        }
-        return this;
+        // if (!this._helper) return this;
+        // // If helper exists, try to anchor it to this wrapper's world transform so
+        // // it appears exactly where the light wrapper is placed. Some helpers
+        // // compute internal positions at creation time and don't follow parent
+        // // transforms automatically; copying the group's world matrix keeps the
+        // // helper aligned with the wrapper.
+        // try {
+        //     if (this.group && this.group.matrixWorld && this._helper.matrix) {
+        //         this._helper.matrix.copy(this.group.matrixWorld);
+        //         this._helper.matrixAutoUpdate = false;
+        //         this._helper.matrixWorldNeedsUpdate = true;
+        //     }
+        // } catch (e) {}
+        // if (typeof this._helper.update === 'function') {
+        //     try { this._helper.update(); } catch (e) {}
+        // }
+        // return this;
     }
 }
 
 // DirectionalLight wrapper
 export class DirectionalLight extends Light {
-    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), target = null, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
+    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.DirectionalLight(this.color, this.intensity);
+        this._object3D.add(this.light);
         this.light.castShadow = !!castShadow;
         // apply centralized shadow settings
         try {
@@ -187,29 +180,15 @@ export class DirectionalLight extends Light {
         // world position (set by BaseObject) determines world placement.
         this.light.position.set(0, 0, 0);
 
-        // create a target object (if provided as vector or object)
-        if (target instanceof THREE.Object3D) {
-            this.light.target = target;
-            this.group.add(target);
-        } else if (target && typeof target === 'object') {
-            const t = new THREE.Object3D();
-            t.position.set(target.x || 0, target.y || 0, target.z || 0);
-            this.light.target = t;
-            this.group.add(t);
-        } else {
-            // default target at origin relative to group
-            const t = new THREE.Object3D();
-            t.position.set(0, 0, 0);
-            this.light.target = t;
-            this.group.add(t);
-        }
+        let target = new THREE.Object3D({ name: 'DirectionalLightTarget' });
+        this.light.add(target);
+        target.position.set(0, -1, 0);
+        this.light.target = target;
 
-        this.group.add(this.light);
         // attach a default helper for directional lights
         try {
-            this._helper = new THREE.DirectionalLightHelper(this.light, Math.max(1, (this._iconSize || 1)));
-            this.group.add(this._helper);
-            this.updateHelper();
+            this._helper = new THREE.DirectionalLightHelper(this.light, 10);
+            this._object3D.add(this._helper);
         } catch (e) {
             this._helper = null;
         }
@@ -232,16 +211,14 @@ export class PointLight extends Light {
         try {
             this.light.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.point && LIGHT_DEFAULTS.point.mapSize) ? LIGHT_DEFAULTS.point.mapSize : SHADOW.mapSize;
             this.light.shadow.mapSize.height = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.point && LIGHT_DEFAULTS.point.mapSize) ? LIGHT_DEFAULTS.point.mapSize : SHADOW.mapSize;
+            this.light.shadow.bias = SHADOW.bias;
         } catch (e) {}
         // place light at local origin (group manages world position)
         this.light.position.set(0, 0, 0);
-        this.group.add(this.light);
         // attach a default helper for point lights
         try {
-            const size = Math.max(0.5, (this._iconSize || 1));
-            this._helper = new THREE.PointLightHelper(this.light, size);
-            this.group.add(this._helper);
-            this.updateHelper();
+            this._helper = new THREE.PointLightHelper(this.light);
+            this._object3D.add(this._helper);
         } catch (e) {
             this._helper = null;
         }
@@ -254,38 +231,27 @@ export class PointLight extends Light {
 
 // SpotLight wrapper
 export class Spotlight extends Light {
-    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), target = null, distance = 0, angle = Math.PI / 6, penumbra = 0, decay = 1, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
+    constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), distance = 0, angle = Math.PI / 6, penumbra = 0, decay = 1, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.SpotLight(this.color, this.intensity, distance, angle, penumbra, decay);
         this.light.castShadow = !!castShadow;
         try {
             this.light.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
             this.light.shadow.mapSize.height = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
+            this.light.shadow.bias = SHADOW.bias;
         } catch (e) {}
         // place light at local origin (group manages world position)
         this.light.position.set(0, 0, 0);
 
-        if (target instanceof THREE.Object3D) {
-            this.light.target = target;
-            this.group.add(target);
-        } else if (target && typeof target === 'object') {
-            const t = new THREE.Object3D();
-            t.position.set(target.x || 0, target.y || 0, target.z || 0);
-            this.light.target = t;
-            this.group.add(t);
-        } else {
-            const t = new THREE.Object3D();
-            t.position.set(0, 0, -1);
-            this.light.target = t;
-            this.group.add(t);
-        }
+        let target = new THREE.Object3D({ name: 'SpotlightTarget' });
+        this.light.add(target);
+        target.position.set(0, -1, 0);
+        this.light.target = target;
 
-        this.group.add(this.light);
         // attach a default helper for spotlights
         try {
             this._helper = new THREE.SpotLightHelper(this.light);
-            this.group.add(this._helper);
-            this.updateHelper();
+            this._object3D.add(this._helper);
         } catch (e) {
             this._helper = null;
         }

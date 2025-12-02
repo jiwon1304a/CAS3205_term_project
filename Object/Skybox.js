@@ -20,11 +20,6 @@ export class Skybox extends Mesh {
     }
 
     _createMesh() {
-        if (this.mesh) {
-            // reuse setMesh to replace existing mesh
-            try { if (this.group) this.group.remove(this.mesh); } catch (e) {}
-        }
-
         const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
         let createdMesh = null;
         if (this.images && Array.isArray(this.images) && this.images.length === 6) {
@@ -56,17 +51,13 @@ export class Skybox extends Mesh {
 
     setImages(imagesArray) { this.images = imagesArray; this._createMesh(); return this; }
     setColor(color) { this.color = color; if (!this.images) { if (this.mesh && this.mesh.material) { if (Array.isArray(this.mesh.material)) { this.mesh.material.forEach(m => m.color && m.color.set(color)); } else { this.mesh.material.color && this.mesh.material.color.set(color); } } } return this; }
-    setSize(size) { this.size = size; this._createMesh(); return this; }
-    setPosition(x = 0, y = 0, z = 0) { this.group.position.set(x, y, z); return this; }
-    setRotation(x = 0, y = 0, z = 0) { this.group.rotation.set(x, y, z); return this; }
-    setVisibility(v) { if (this.group) this.group.visible = !!v; return this; }
     addTo(parent) { 
         if (!parent) return this;
         const target = (typeof parent.getObject3D === 'function') ? parent.getObject3D() : parent;
-        if (target && typeof target.add === 'function') target.add(this.group);
+        if (target && typeof target.add === 'function') target.add(this.mesh);
         return this;
     }
-    getObject3D() { return this.group; }
+    getObject3D() { return this.mesh; }
 }
 
 export default Skybox;

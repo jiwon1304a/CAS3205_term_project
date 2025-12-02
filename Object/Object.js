@@ -8,7 +8,6 @@ export class Object {
     constructor({ position = new THREE.Vector3(), rotation = new THREE.Euler(), scale = new THREE.Vector3(1, 1, 1), name = '' } = {}) {
         this._object3D = new THREE.Object3D();
         // compatibility alias used by older code in this repo
-        this.group = this._object3D;
         this._object3D.position.copy(position);
         this._object3D.rotation.copy(rotation);
         this._object3D.scale.copy(scale);

@@ -23,7 +23,7 @@ export const LIGHT_DEFAULTS = {
     },
     point: {
         castShadow: true,
-        mapSize: 1024
+        mapSize: 2048
     }
 };
 
