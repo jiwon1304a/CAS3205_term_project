@@ -372,46 +372,51 @@ export class Gizmo {
             if (this._activeHandle.axis === 'Y') obj3.position.y = newLocal.y;
             if (this._activeHandle.axis === 'Z') obj3.position.z = newLocal.z;
         } else if (this._activeHandle.type === 'rotate') {
-                // rotate mapping: use vertical mouse movement only (delta Y) mapped to
-                // degrees via ROTATE_SENSITIVITY. Additionally scale the sensitivity
-                // based on how close the mouse is to the object's screen position
-                // so moving the mouse near the object produces larger rotation.
-                // deltaY: positive when moving mouse down, negative when moving up.
-                const deltaY = (event && typeof event.clientY === 'number') ? (event.clientY - (this._startScreen ? this._startScreen.y : 0)) : 0;
+            // rotate mapping: use vertical mouse movement only (delta Y) mapped to
+            // degrees via ROTATE_SENSITIVITY. Additionally scale the sensitivity
+            // based on how close the mouse is to the object's screen position
+            // so moving the mouse near the object produces larger rotation.
+            // deltaY: positive when moving mouse down, negative when moving up.
+            const deltaY = (event && typeof event.clientY === 'number') ? (event.clientY - (this._startScreen ? this._startScreen.y : 0)) : 0;
 
-                // compute proximity factor: project object's world pos to screen
-                // and measure pixel distance between mouse and object center.
-                let proximityFactor = 1.0;
-                try {
-                    const rect = this.domElement.getBoundingClientRect();
-                    const objWorld = new THREE.Vector3();
-                    obj3.getWorldPosition(objWorld);
-                    const ndc = objWorld.clone().project(this.camera);
-                    const screenX = ((ndc.x + 1) / 2) * rect.width + rect.left;
-                    const screenY = ((-ndc.y + 1) / 2) * rect.height + rect.top;
-                    const dx = (event.clientX - screenX);
-                    const dy = (event.clientY - screenY);
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const radius = GIZMO_CONFIG.ROTATE_PROXIMITY_RADIUS || 200;
-                    const boost = GIZMO_CONFIG.ROTATE_PROXIMITY_BOOST || 2.0;
-                    if (dist < radius && radius > 0) {
-                        const t = 1 - (dist / radius); // 0..1 (1 when exactly on target)
-                        proximityFactor = 1 + t * (boost - 1);
-                    }
-                } catch (e) {
-                    proximityFactor = 1.0;
+            // compute proximity factor: project object's world pos to screen
+            // and measure pixel distance between mouse and object center.
+            let proximityFactor = 1.0;
+            try {
+                const rect = this.domElement.getBoundingClientRect();
+                const objWorld = new THREE.Vector3();
+                obj3.getWorldPosition(objWorld);
+                const ndc = objWorld.clone().project(this.camera);
+                const screenX = ((ndc.x + 1) / 2) * rect.width + rect.left;
+                const screenY = ((-ndc.y + 1) / 2) * rect.height + rect.top;
+                const dx = (event.clientX - screenX);
+                const dy = (event.clientY - screenY);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const radius = GIZMO_CONFIG.ROTATE_PROXIMITY_RADIUS || 200;
+                const boost = GIZMO_CONFIG.ROTATE_PROXIMITY_BOOST || 2.0;
+                if (dist < radius && radius > 0) {
+                    const t = 1 - (dist / radius); // 0..1 (1 when exactly on target)
+                    proximityFactor = 1 + t * (boost - 1);
                 }
+            } catch (e) {
+                proximityFactor = 1.0;
+            }
 
-                // map to degrees (invert sign so upward movement = positive rotation)
-                const baseSensitivity = (GIZMO_CONFIG.ROTATE_SENSITIVITY || 0.5);
-                const angleDeg = -deltaY * baseSensitivity * proximityFactor;
-                const snappedDeg = Math.round(angleDeg / this.snap.rotate) * this.snap.rotate;
-                const snappedRad = THREE.MathUtils.degToRad(snappedDeg);
-                const newRot = this._startRotation.clone();
-                if (this._activeHandle.axis === 'X') newRot.x = this._startRotation.x + snappedRad;
-                if (this._activeHandle.axis === 'Y') newRot.y = this._startRotation.y + snappedRad;
-                if (this._activeHandle.axis === 'Z') newRot.z = this._startRotation.z + snappedRad;
-                obj3.rotation.copy(newRot);
+            // map to degrees (invert sign so upward movement = positive rotation)
+            const baseSensitivity = (GIZMO_CONFIG.ROTATE_SENSITIVITY || 0.5);
+            const angleDeg = -deltaY * baseSensitivity * proximityFactor;
+            const snappedDeg = Math.round(angleDeg / this.snap.rotate) * this.snap.rotate;
+            const snappedRad = THREE.MathUtils.degToRad(snappedDeg);
+            const newRot = this._startRotation.clone();
+            console.log('Gizmo rotate:', this._activeHandle.axis,
+                ' deltaY=', deltaY,
+                ' proximityFactor=', proximityFactor,
+                ' angleDeg=', angleDeg,
+                ' snappedDeg=', snappedDeg);
+            if (this._activeHandle.axis === 'X') newRot.x = this._startRotation.x + snappedRad;
+            if (this._activeHandle.axis === 'Y') newRot.y = this._startRotation.y + snappedRad;
+            if (this._activeHandle.axis === 'Z') newRot.z = this._startRotation.z + snappedRad;
+            obj3.rotation.copy(newRot);
         } else if (this._activeHandle.type === 'scale') {
             // map mouse ray to closest point along axis and use delta to compute scale factor
             this.raycaster.setFromCamera(this.pointer, this.camera);

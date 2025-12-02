@@ -32,11 +32,6 @@ export class Light extends BaseObject {
         return this;
     }
 
-    /**
-     * Set a billboard icon for this light. `path` should be a URL relative to project
-     * (e.g. `Assets/light_icon.png`). The sprite will be added under this.group and
-     * be selectable (userData.selectable points back to this wrapper).
-     */
     setIcon(path, size = 1) {
         if (!path) return this;
         const loader = new THREE.TextureLoader();
@@ -59,7 +54,7 @@ export class Light extends BaseObject {
             sprite.userData = sprite.userData || {};
             sprite.userData.selectable = that;
             sprite.userData.light = that;
-            that.light.add(sprite);
+            that._object3D.add(sprite);
         });
         return this;
     }
@@ -102,13 +97,13 @@ export class Light extends BaseObject {
 
     addTo(parent) { 
         if (!parent) return this;
-        if (parent) parent.add(this.light);
+        if (parent) {
+            parent.add(this._object3D);
+        }
         return this;
     }
-    getObject3D() { return this.light; }
 
     dispose() {
-        // remove light from group (no explicit dispose on Light)
         if (this.light) {
             this.light = null;
         }
@@ -160,7 +155,6 @@ export class DirectionalLight extends Light {
     constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.DirectionalLight(this.color, this.intensity);
-        this._object3D.add(this.light);
         this.light.castShadow = !!castShadow;
         // apply centralized shadow settings
         try {
@@ -176,22 +170,28 @@ export class DirectionalLight extends Light {
             this.light.shadow.bias = SHADOW.bias;
             if (this.light.shadow && this.light.shadow.camera && typeof this.light.shadow.camera.updateProjectionMatrix === 'function') this.light.shadow.camera.updateProjectionMatrix();
         } catch (e) {}
-        // keep the underlying light at the group's local origin; the group's
-        // world position (set by BaseObject) determines world placement.
         this.light.position.set(0, 0, 0);
+        this._object3D.add(this.light);
 
         let target = new THREE.Object3D({ name: 'DirectionalLightTarget' });
         this.light.add(target);
         target.position.set(0, -1, 0);
         this.light.target = target;
+    }
 
-        // attach a default helper for directional lights
+    createHelper(scene) {
+        if (this._helper) return this;
         try {
-            this._helper = new THREE.DirectionalLightHelper(this.light, 10);
-            this._object3D.add(this._helper);
+            this._helper = new THREE.DirectionalLightHelper(this.light, 1);
+            scene.add(this._helper);
         } catch (e) {
             this._helper = null;
         }
+    }
+
+    setRotation(x = 0, y = 0, z = 0) {
+        super.setRotation(new THREE.Euler(x, y, z));
+        return this;
     }
 
     setTarget(x = 0, y = 0, z = 0) {
@@ -207,18 +207,21 @@ export class PointLight extends Light {
     constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), distance = 0, decay = 1, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.PointLight(this.color, this.intensity, distance, decay);
+        this._object3D.add(this.light);
         this.light.castShadow = !!castShadow;
         try {
             this.light.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.point && LIGHT_DEFAULTS.point.mapSize) ? LIGHT_DEFAULTS.point.mapSize : SHADOW.mapSize;
             this.light.shadow.mapSize.height = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.point && LIGHT_DEFAULTS.point.mapSize) ? LIGHT_DEFAULTS.point.mapSize : SHADOW.mapSize;
             this.light.shadow.bias = SHADOW.bias;
         } catch (e) {}
-        // place light at local origin (group manages world position)
         this.light.position.set(0, 0, 0);
-        // attach a default helper for point lights
+    }
+
+    createHelper(scene) {
+        if (this._helper) return this;
         try {
             this._helper = new THREE.PointLightHelper(this.light);
-            this._object3D.add(this._helper);
+            scene.add(this._helper);
         } catch (e) {
             this._helper = null;
         }
@@ -247,11 +250,13 @@ export class Spotlight extends Light {
         this.light.add(target);
         target.position.set(0, -1, 0);
         this.light.target = target;
+    }
 
-        // attach a default helper for spotlights
+    createHelper(scene) {
+        if (this._helper) return this;
         try {
             this._helper = new THREE.SpotLightHelper(this.light);
-            this._object3D.add(this._helper);
+            scene.add(this._helper);
         } catch (e) {
             this._helper = null;
         }

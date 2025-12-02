@@ -139,6 +139,7 @@ const lightUI = initLightControls({ gui, params,
     createDirectional: () => {
         const dl = new DirectionalLight({ color: 0xffffff, intensity: params.dirIntensity, position: new THREE.Vector3(params.dirX, params.dirY, params.dirZ), name: 'DirectionalLight', icon: dierctionalLightIcon, iconSize: iconSize });
         dl.addTo(scene);
+        dl.createHelper(scene);
         // sync helper visibility with params (helper created by class)
         if (typeof dl.setHelperVisible === 'function') dl.setHelperVisible(params.showDirHelper);
         return dl;
@@ -146,11 +147,13 @@ const lightUI = initLightControls({ gui, params,
     createPoint: () => {
         const pl = new PointLight({ color: 0xffffff, intensity: 1000, position: new THREE.Vector3(0, 5, 0), distance: 100, decay: 2, name: 'PointLight', icon: pointLightIcon, iconSize: iconSize });
         pl.addTo(scene);
+        pl.createHelper(scene);
         return pl;
     },
     createSpot: () => {
         const sl = new Spotlight({ color: 0xffffff, intensity: 1, position: new THREE.Vector3(0, 10, 0), angle: Math.PI / 6, distance: 0, penumbra: 0, decay: 1, name: 'Spotlight', icon: spotlightIcon, iconSize: iconSize });
         sl.addTo(scene);
+        sl.createHelper(scene);
         return sl;
     },
     getSelectedLight: () => (selectedObject && typeof selectedObject.getLight === 'function') ? selectedObject : null
@@ -161,7 +164,7 @@ const meshUI = initMeshControls({ gui, params,
     getSelectedMesh: () => {
         // treat any selected object that exposes a material or setColor as a mesh
         if (!selectedObject) return null;
-        const obj3d = selectedObject.getObject3D ? selectedObject.getObject3D() : selectedObject;
+        const obj3d = selectedObject.getObject3D() ? selectedObject.getObject3D() : selectedObject;
         if (selectedObject && (typeof selectedObject.setColor === 'function' || (obj3d && obj3d.material && obj3d.material.color))) return selectedObject;
         return null;
     },

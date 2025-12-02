@@ -29,7 +29,6 @@ export class Floor extends Mesh {
         if (target && typeof target.add === 'function') target.add(this.mesh);
         return this;
     }
-    getObject3D() { return this.mesh; }
 }
 
 export default Floor;
