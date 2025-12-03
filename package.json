@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "npx http-server -p 8080"
+    "start": "npx http-server -p 8080 --cors",
+    "start:3000": "npx http-server -p 3000 --cors",
+    "dev": "npx http-server -p 3000 --cors"
   }
 }
