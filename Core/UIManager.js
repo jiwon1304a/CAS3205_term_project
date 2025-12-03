@@ -17,7 +17,8 @@ export class UIManager {
             lightEnabled: true,
             dirIntensity: 1, dirX: -10, dirY: 10, dirZ: -10, showDirHelper: true,
             skyColor: '#87CEEB', skySize: 1000, skyVisible: true,
-            selectedLightIntensity: 1, selectedLightColor: '#ffffff'
+            selectedLightIntensity: 1, selectedLightColor: '#ffffff',
+            selectedLightDistance: 0, selectedLightPenumbra: 0
         };
 
         this.objectUI = null;
@@ -206,7 +207,10 @@ export class UIManager {
     updateLoop() {
         // 매 프레임 선택된 객체 상태를 UI에 반영 (Gizmo로 이동 시 값 변화 등)
         if (this.interaction.selectedObject) {
-            this.updateUI(this.interaction.selectedObject);
+            // Only update transform (Object) UI, as it can be changed by Gizmo.
+            if (this.objectUI && this.objectUI.updateFromObject) {
+                this.objectUI.updateFromObject(this.interaction.selectedObject);
+            }
         }
     }
 }
