@@ -76,9 +76,14 @@ export function initSelection({ renderer, camera, scene, raycaster, pointer, onS
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
 
-    return function dispose() {
-        renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-        window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('pointerup', onPointerUp);
+    return {
+        dispose: function () {
+            renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+        },
+        setCamera: function (cam) {
+            camera = cam;
+        }
     };
 }

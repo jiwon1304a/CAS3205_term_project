@@ -508,6 +508,11 @@ export class Gizmo {
         return this;
     }
 
+    setCamera(camera) {
+        this.camera = camera;
+        return this;
+    }
+
     update(forceScale = false) {
         if (!this._target) return;
         const obj = this._target.getObject3D ? this._target.getObject3D() : this._target;

@@ -34,7 +34,7 @@ export class Interaction {
     }
 
     initSelection() {
-        initSelection({ 
+        this.selection = initSelection({ 
             renderer: this.app.renderer, 
             camera: this.app.camera, 
             scene: this.app.scene, 
@@ -43,6 +43,15 @@ export class Interaction {
             onSelect: (found) => this.select(found),
             onDeselect: () => this.deselect()
         });
+    }
+
+    updateCamera(camera) {
+        if (this.gizmo && typeof this.gizmo.setCamera === 'function') {
+            this.gizmo.setCamera(camera);
+        }
+        if (this.selection && typeof this.selection.setCamera === 'function') {
+            this.selection.setCamera(camera);
+        }
     }
 
     select(object) {

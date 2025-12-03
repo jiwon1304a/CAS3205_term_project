@@ -16,15 +16,5 @@ const interaction = new Interaction(app);
 // 4. Initialize UI (GUI, Controls)
 const uiManager = new UIManager(app, world, interaction);
 
-// 5. Create initial objects
-const myBox = world.createBox({ 
-    width: 4, height: 2, depth: 2, 
-    color: 0x0077ff, 
-    position: { x: 0, y: 3, z: 0 } 
-});
-
-// Select initial object
-interaction.select(myBox);
-
 // 6. Start Loop
 app.start();

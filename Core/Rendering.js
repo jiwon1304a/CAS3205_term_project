@@ -19,16 +19,16 @@ export function setupRenderer() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
     const lighting = new TiledLighting();
-    renderer.lighting = lighting;
+    // renderer.lighting = lighting;
     
     let postProcessing = new THREE.PostProcessing( renderer );
-    
-    const debugBlockIndexes = lighting.getNode( scene, camera ).setSize( window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio ).getBlock().toColor().div( 100 * 2 );
-    
+
+    // const debugBlockIndexes = lighting.getNode( scene, camera ).setSize( window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio ).getBlock().toColor().div( 100 * 2 );
+
     // postProcessing.outputNode = compose.add( debugBlockIndexes.mul( tileInfluence ) );
     postProcessing.needsUpdate = true;
-    
+
     let orbitControls = initOrbitControls(camera, renderer);
-    
-    return { scene, camera, renderer, orbitControls};
+
+    return { scene, camera, renderer, orbitControls, lighting, postProcessing };
 };

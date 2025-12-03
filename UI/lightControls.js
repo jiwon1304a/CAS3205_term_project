@@ -1,38 +1,4 @@
-export function initLightControls({ gui, params, createDirectional, createPoint, createSpot, getSelectedLight, setSelectedLight } = {}) {
-    // Remove temporary directional-light controls; instead provide buttons
-    // to create lights. The caller may pass factory callbacks `createDirectional`,
-    // `createPoint`, `createSpot` which should create and add the light to the scene.
-    const lightFolder = gui.addFolder('Lights');
-
-    lightFolder.add({ addDirectional: () => {
-        if (typeof createDirectional === 'function') {
-            try { createDirectional(); }
-            catch (e) { console.warn('createDirectional callback threw', e); }
-        } else {
-            console.warn('createDirectional callback not provided');
-        }
-    } }, 'addDirectional').name('Add Directional Light');
-
-    lightFolder.add({ addPoint: () => {
-        if (typeof createPoint === 'function') {
-            try { createPoint(); }
-            catch (e) { console.warn('createPoint callback threw', e); }
-        } else {
-            console.warn('createPoint callback not provided');
-        }
-    } }, 'addPoint').name('Add Point Light');
-
-    lightFolder.add({ addSpot: () => {
-        if (typeof createSpot === 'function') {
-            try { createSpot(); }
-            catch (e) { console.warn('createSpot callback threw', e); }
-        } else {
-            console.warn('createSpot callback not provided');
-        }
-    } }, 'addSpot').name('Add Spotlight');
-
-    lightFolder.open();
-
+export function initLightControls({ gui, params, getSelectedLight, setSelectedLight } = {}) {
     // Light property controls for the currently-selected light (intensity/color)
     const propFolder = gui.addFolder('Light Properties');
     const intensityCtrl = propFolder.add(params, 'selectedLightIntensity', 0, 10, 0.01).name('Intensity');
@@ -62,5 +28,9 @@ export function initLightControls({ gui, params, createDirectional, createPoint,
         colorCtrl.setValue(params.selectedLightColor);
     }
 
-    return { updateFromLight };
+    function setVisibility(visible) {
+        visible ? propFolder.show() : propFolder.hide();
+    }
+
+    return { updateFromLight, setVisibility };
 }

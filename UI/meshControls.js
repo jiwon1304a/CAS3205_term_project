@@ -30,5 +30,9 @@ export function initMeshControls({ gui, params, getSelectedMesh, setSelectedMesh
         colorCtrl.setValue(params.color);
     }
 
-    return { updateFromMesh };
+    function setVisibility(visible) {
+        visible ? meshFolder.show() : meshFolder.hide();
+    }
+
+    return { updateFromMesh, setVisibility };
 }

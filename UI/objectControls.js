@@ -94,5 +94,11 @@ export function initObjectControls({ gui, params, getSelectedObject, setSelected
         scaleZCtrl.setValue(params.scaleZ);
     }
 
-    return { updateFromObject };
+    function setVisibility(visible) {
+        visible ? positionFolder.show() : positionFolder.hide();
+        visible ? rotationFolder.show() : rotationFolder.hide();
+        visible ? scaleFolder.show() : scaleFolder.hide();
+    }
+
+    return { updateFromObject, setVisibility };
 }

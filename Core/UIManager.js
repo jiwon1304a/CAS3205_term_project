@@ -1,5 +1,4 @@
 import { createGUI, initObjectControls, initLightControls, initMeshControls } from '../UI/index.js';
-import { DirectionalLight, PointLight, Spotlight } from '../Object/index.js';
 import * as THREE from 'three/webgpu';
 
 export class UIManager {
@@ -35,6 +34,78 @@ export class UIManager {
     }
 
     initControls() {
+        // 0. Camera Mode
+        const camFolder = this.gui.addFolder('Camera Mode');
+        const camParams = {
+            setPerspective: () => {
+                this.app.switchCamera('Perspective');
+                this.interaction.updateCamera(this.app.activeCamera);
+            },
+            setOrthographic: () => {
+                this.app.switchCamera('Orthographic');
+                this.interaction.updateCamera(this.app.activeCamera);
+            }
+        };
+        const btnPersp = camFolder.add(camParams, 'setPerspective').name('Perspective');
+        const btnOrtho = camFolder.add(camParams, 'setOrthographic').name('Orthographic');
+
+        // Place buttons on the same line
+        btnPersp.domElement.style.width = '50%';
+        btnPersp.domElement.style.display = 'inline-block';
+        btnOrtho.domElement.style.width = '50%';
+        btnOrtho.domElement.style.display = 'inline-block';
+        
+        camFolder.open();
+
+        // 1. Create Object Dropdown & Button
+        const createFolder = this.gui.addFolder('Create Object');
+        const createParams = {
+            type: 'Box', // default
+            create: () => {
+                const type = createParams.type;
+                let obj = null;
+                const iconSize = 5;
+
+                if (type === 'Box') {
+                    obj = this.addRandomBox();
+                    // addRandomBox already selects the object, but we can ensure it returns the object
+                    // Note: addRandomBox calls interaction.select(b) at the end.
+                    // So we don't need to select it again here if addRandomBox handles it.
+                    // However, addRandomBox returns void in current implementation? Let's check.
+                    // Wait, addRandomBox calls this.world.createBox and then this.interaction.select(b).
+                    // So obj will be undefined if addRandomBox doesn't return.
+                    // Let's update addRandomBox to return the box.
+                } else if (type === 'DirectionalLight') {
+                    obj = this.world.createDirectionalLight({ 
+                        color: 0xffffff, intensity: this.params.dirIntensity, 
+                        position: new THREE.Vector3(this.params.dirX, this.params.dirY, this.params.dirZ), 
+                        name: 'DirectionalLight', icon: 'Assets/directionallight.svg', iconSize,
+                        showHelper: this.params.showDirHelper
+                    });
+                } else if (type === 'PointLight') {
+                    obj = this.world.createPointLight({ 
+                        color: 0xffffff, intensity: 1000, 
+                        position: new THREE.Vector3(0, 5, 0), distance: 10, decay: 2, 
+                        name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize 
+                    });
+                } else if (type === 'SpotLight') {
+                    obj = this.world.createSpotLight({ 
+                        color: 0xffffff, intensity: 1000, 
+                        position: new THREE.Vector3(0, 10, 0), angle: Math.PI / 6, distance: 0, penumbra: 0, decay: 1, 
+                        name: 'Spotlight', icon: 'Assets/spotlight.svg', iconSize 
+                    });
+                }
+
+                if (obj) {
+                    this.interaction.select(obj);
+                }
+            }
+        };
+
+        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight']).name('Type');
+        createFolder.add(createParams, 'create').name('Create');
+        createFolder.open();
+
         // Object Controls
         this.objectUI = initObjectControls({ 
             gui: this.gui, 
@@ -43,45 +114,10 @@ export class UIManager {
             setSelectedObject: (o) => this.interaction.select(o)
         });
 
-        // Add Box Button
-        this.gui.add({ addBox: () => this.addRandomBox() }, 'addBox').name('Add Box');
-
-        // Light Controls
-        const iconSize = 5;
+        // Light Controls (Inspection only)
         this.lightUI = initLightControls({ 
             gui: this.gui, 
             params: this.params,
-            createDirectional: () => {
-                const dl = new DirectionalLight({ 
-                    color: 0xffffff, intensity: this.params.dirIntensity, 
-                    position: new THREE.Vector3(this.params.dirX, this.params.dirY, this.params.dirZ), 
-                    name: 'DirectionalLight', icon: 'Assets/directionallight.svg', iconSize 
-                });
-                dl.addTo(this.app.scene);
-                dl.createHelper(this.app.scene);
-                if (typeof dl.setHelperVisible === 'function') dl.setHelperVisible(this.params.showDirHelper);
-                return dl;
-            },
-            createPoint: () => {
-                const pl = new PointLight({ 
-                    color: 0xffffff, intensity: 1000, 
-                    position: new THREE.Vector3(0, 5, 0), distance: 10, decay: 2, 
-                    name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize 
-                });
-                pl.addTo(this.app.scene);
-                pl.createHelper(this.app.scene);
-                return pl;
-            },
-            createSpot: () => {
-                const sl = new Spotlight({ 
-                    color: 0xffffff, intensity: 1000, 
-                    position: new THREE.Vector3(0, 10, 0), angle: Math.PI / 6, distance: 0, penumbra: 0, decay: 1, 
-                    name: 'Spotlight', icon: 'Assets/spotlight.svg', iconSize 
-                });
-                sl.addTo(this.app.scene);
-                sl.createHelper(this.app.scene);
-                return sl;
-            },
             getSelectedLight: () => (this.interaction.selectedObject && typeof this.interaction.selectedObject.getLight === 'function') ? this.interaction.selectedObject : null
         });
 
@@ -98,6 +134,9 @@ export class UIManager {
             },
             setSelectedMesh: (m) => this.interaction.select(m)
         });
+
+        // Initialize visibility (hide all initially if nothing selected)
+        this.updateUI(this.interaction.selectedObject);
     }
 
     addRandomBox() {
@@ -115,12 +154,53 @@ export class UIManager {
             b.getObject3D().scale.set(sx, sy, sz);
         }
         this.interaction.select(b);
+        return b;
     }
 
     updateUI(selectedObject) {
         if (this.objectUI && this.objectUI.updateFromObject) this.objectUI.updateFromObject(selectedObject);
         if (this.meshUI && this.meshUI.updateFromMesh) this.meshUI.updateFromMesh(selectedObject);
         if (this.lightUI && this.lightUI.updateFromLight) this.lightUI.updateFromLight(selectedObject);
+
+        // Handle visibility
+        if (!selectedObject) {
+            if (this.objectUI) this.objectUI.setVisibility(false);
+            if (this.meshUI) this.meshUI.setVisibility(false);
+            if (this.lightUI) this.lightUI.setVisibility(false);
+            return;
+        }
+
+        // Always show object transform controls for selected objects
+        if (this.objectUI) this.objectUI.setVisibility(true);
+
+        // Determine type
+        let isMesh = false;
+        let isLight = false;
+
+        // Check for Mesh
+        const obj3d = (selectedObject.getObject3D && typeof selectedObject.getObject3D === 'function') 
+            ? selectedObject.getObject3D() 
+            : selectedObject;
+        
+        if (obj3d && obj3d.isMesh) {
+            isMesh = true;
+        } else if (selectedObject.setColor && !selectedObject.getLight) {
+             // Fallback: if it has setColor but is not a light wrapper
+             isMesh = true;
+        }
+
+        // Check for Light
+        const lightObj = (selectedObject.getLight && typeof selectedObject.getLight === 'function')
+            ? selectedObject.getLight()
+            : (obj3d && obj3d.isLight ? obj3d : null);
+
+        if (lightObj && lightObj.isLight) {
+            isLight = true;
+        }
+
+        // Apply visibility
+        if (this.meshUI) this.meshUI.setVisibility(isMesh);
+        if (this.lightUI) this.lightUI.setVisibility(isLight);
     }
 
     updateLoop() {

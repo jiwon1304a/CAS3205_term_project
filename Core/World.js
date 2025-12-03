@@ -1,9 +1,11 @@
-import { Floor, Box, Skybox } from '../Object/index.js';
+import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight } from '../Object/index.js';
+import * as THREE from 'three/webgpu';
 
 export class World {
     constructor(scene) {
         this.scene = scene;
         this.boxes = [];
+        this.lights = [];
         this.floor = null;
         this.sky = null;
     }
@@ -22,5 +24,30 @@ export class World {
         b.addTo(this.scene);
         this.boxes.push(b);
         return b;
+    }
+
+    createDirectionalLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), name = 'DirectionalLight', icon = '', iconSize = 1, showHelper = true } = {}) {
+        const dl = new DirectionalLight({ color, intensity, position, name, icon, iconSize });
+        dl.addTo(this.scene);
+        dl.createHelper(this.scene);
+        if (typeof dl.setHelperVisible === 'function') dl.setHelperVisible(showHelper);
+        this.lights.push(dl);
+        return dl;
+    }
+
+    createPointLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 5, 0), distance = 10, decay = 2, name = 'PointLight', icon = '', iconSize = 1 } = {}) {
+        const pl = new PointLight({ color, intensity, position, distance, decay, name, icon, iconSize });
+        pl.addTo(this.scene);
+        pl.createHelper(this.scene);
+        this.lights.push(pl);
+        return pl;
+    }
+
+    createSpotLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), angle = Math.PI / 6, distance = 0, penumbra = 0, decay = 1, name = 'Spotlight', icon = '', iconSize = 1 } = {}) {
+        const sl = new Spotlight({ color, intensity, position, angle, distance, penumbra, decay, name, icon, iconSize });
+        sl.addTo(this.scene);
+        sl.createHelper(this.scene);
+        this.lights.push(sl);
+        return sl;
     }
 }
