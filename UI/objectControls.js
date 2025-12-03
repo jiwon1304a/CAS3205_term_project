@@ -68,8 +68,6 @@ export function initObjectControls({ gui, params, getSelectedObject, setSelected
     });
     scaleFolder.open();
 
-    // NOTE: color is handled by mesh-specific controls in `meshControls.js`.
-
     function updateFromObject(obj) {
         if (!obj) return;
         const pos = obj.getObject3D().position;

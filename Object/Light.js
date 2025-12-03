@@ -237,6 +237,7 @@ export class Spotlight extends Light {
     constructor({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(), distance = 0, angle = Math.PI / 6, penumbra = 0, decay = 1, castShadow = true, name = '', icon = null, iconSize = 1 } = {}) {
         super({ color, intensity, position, name, icon, iconSize });
         this.light = new THREE.SpotLight(this.color, this.intensity, distance, angle, penumbra, decay);
+        this._object3D.add(this.light);
         this.light.castShadow = !!castShadow;
         try {
             this.light.shadow.mapSize.width = (LIGHT_DEFAULTS && LIGHT_DEFAULTS.spot && LIGHT_DEFAULTS.spot.mapSize) ? LIGHT_DEFAULTS.spot.mapSize : SHADOW.mapSize;
