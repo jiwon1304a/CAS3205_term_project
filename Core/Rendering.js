@@ -9,6 +9,20 @@ export function setupRenderer() {
     
     let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 20, 50);
+
+    // const aspect = window.innerWidth / window.innerHeight;
+    // const frustumSize = 100;
+    // let camera = new THREE.OrthographicCamera(
+    //     frustumSize * aspect / -2,
+    //     frustumSize * aspect / 2,
+    //     frustumSize / 2,
+    //     frustumSize / -2,
+    //     0.1,
+    //     1000
+    // );
+    // camera.position.set(0, 50, 0);
+    // camera.lookAt(0, 0, 0);
+
     scene.add(camera);
     
     let renderer = new THREE.WebGPURenderer({ antialias: true });
@@ -18,8 +32,21 @@ export function setupRenderer() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
-    const lighting = new TiledLighting();
-    // renderer.lighting = lighting;
+    // Fix for TiledLighting crash: Patch customCacheKey to handle null _compute
+    class SafeTiledLighting extends TiledLighting {
+        createNode( lights = [] ) {
+            const node = super.createNode( lights );
+            const originalCacheKey = node.customCacheKey.bind( node );
+            node.customCacheKey = function() {
+                if ( this._compute === null ) return '0';
+                return originalCacheKey();
+            };
+            return node;
+        }
+    }
+
+    const lighting = new SafeTiledLighting();
+    renderer.lighting = lighting;
     
     let postProcessing = new THREE.PostProcessing( renderer );
 
