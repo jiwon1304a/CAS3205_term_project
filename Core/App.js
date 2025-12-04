@@ -79,7 +79,7 @@ export class App {
                 console.warn('renderer.init() failed:', e);
             }
         }
-        this.render();
+        this.renderer.setAnimationLoop(this.render.bind(this));
     }
 
     render() {
@@ -108,7 +108,6 @@ export class App {
         } else {
             this.renderer.render(this.scene, this.activeCamera);
         }
-        requestAnimationFrame(this.render.bind(this));
     }
 
     updateCompositePass() {
