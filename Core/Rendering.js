@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { initOrbitControls } from '../util.js';
 import { SHADOW } from '../Settings.js';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
-import { TiledLighting } from 'three/addons/lighting/TiledLighting.js';
+import { SafeTiledLighting } from './SafeTiledLighting.js';
 
 export function setupRenderer() {
     let scene = new THREE.Scene();
@@ -32,19 +32,6 @@ export function setupRenderer() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
-    // Fix for TiledLighting crash: Patch customCacheKey to handle null _compute
-    class SafeTiledLighting extends TiledLighting {
-        createNode( lights = [] ) {
-            const node = super.createNode( lights );
-            const originalCacheKey = node.customCacheKey.bind( node );
-            node.customCacheKey = function() {
-                if ( this._compute === null ) return '0';
-                return originalCacheKey();
-            };
-            return node;
-        }
-    }
-
     const lighting = new SafeTiledLighting();
     renderer.lighting = lighting;
     

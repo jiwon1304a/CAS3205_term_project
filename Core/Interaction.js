@@ -55,6 +55,11 @@ export class Interaction {
     }
 
     select(object) {
+        if (!object) {
+            this.deselect();
+            return;
+        }
+
         // 기존 선택 해제
         if (this.selectedObject && this.selectedObject !== object && typeof this.selectedObject.setSelected === 'function') {
             this.selectedObject.setSelected(false);

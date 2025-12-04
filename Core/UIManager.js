@@ -36,7 +36,7 @@ export class UIManager {
 
     initControls() {
         // 0. Camera Mode
-        const camFolder = this.gui.addFolder('Camera Mode');
+        const camFolder = this.gui.addFolder('Camera & View');
         const camParams = {
             setPerspective: () => {
                 this.app.switchCamera('Perspective');
@@ -45,7 +45,8 @@ export class UIManager {
             setOrthographic: () => {
                 this.app.switchCamera('Orthographic');
                 this.interaction.updateCamera(this.app.activeCamera);
-            }
+            },
+            lightHeatmap: false
         };
         const btnPersp = camFolder.add(camParams, 'setPerspective').name('Perspective');
         const btnOrtho = camFolder.add(camParams, 'setOrthographic').name('Orthographic');
@@ -55,6 +56,15 @@ export class UIManager {
         btnPersp.domElement.style.display = 'inline-block';
         btnOrtho.domElement.style.width = '50%';
         btnOrtho.domElement.style.display = 'inline-block';
+
+        camFolder.add(camParams, 'lightHeatmap').name('Light Heatmap').onChange((v) => {
+            this.app.toggleLightHeatmap(v);
+            if (v) {
+                this.interaction.select(null);
+            }
+        });
+        
+        camFolder.add(this.app.heatmapScale, 'value', 0.1, 50).name('Heatmap Sensitivity');
         
         camFolder.open();
 
@@ -78,22 +88,31 @@ export class UIManager {
                     // Let's update addRandomBox to return the box.
                 } else if (type === 'DirectionalLight') {
                     obj = this.world.createDirectionalLight({ 
-                        color: 0xffffff, intensity: this.params.dirIntensity, 
-                        position: new THREE.Vector3(this.params.dirX, this.params.dirY, this.params.dirZ), 
+                        color: Math.floor(Math.random() * 0xffffff), 
+                        intensity: 0.5 + Math.random() * 1.5, 
+                        position: new THREE.Vector3((Math.random() - 0.5) * 40, 5 + Math.random() * 15, (Math.random() - 0.5) * 40), 
                         name: 'DirectionalLight', icon: 'Assets/directionallight.svg', iconSize,
-                        showHelper: this.params.showDirHelper
+                        showHelper: true
                     });
                 } else if (type === 'PointLight') {
                     obj = this.world.createPointLight({ 
-                        color: 0xffffff, intensity: 1000, 
-                        position: new THREE.Vector3(0, 5, 0), distance: 10, decay: 2, 
+                        color: Math.floor(Math.random() * 0xffffff), 
+                        intensity: 10 + Math.random() * 20, 
+                        position: new THREE.Vector3((Math.random() - 0.5) * 100, 1 + Math.random() * 4, (Math.random() - 0.5) * 100), 
+                        distance: 2 + Math.random() * 8, 
+                        decay: 1 + Math.random(), 
                         name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize 
                     });
                 } else if (type === 'SpotLight') {
                     obj = this.world.createSpotLight({ 
-                        color: 0xffffff, intensity: 1000, 
-                        position: new THREE.Vector3(0, 10, 0), angle: Math.PI / 6, distance: 0, penumbra: 0, decay: 1, 
-                        name: 'Spotlight', icon: 'Assets/spotlight.svg', iconSize 
+                        color: Math.floor(Math.random() * 0xffffff), 
+                        intensity: 10 + Math.random() * 40, 
+                        position: new THREE.Vector3((Math.random() - 0.5) * 40, 5 + Math.random() * 15, (Math.random() - 0.5) * 40), 
+                        angle: Math.PI / 8 + Math.random() * (Math.PI / 4), 
+                        distance: 0, 
+                        penumbra: Math.random() * 0.5, 
+                        decay: 1 + Math.random(), 
+                        name: 'SpotLight', icon: 'Assets/spotlight.svg', iconSize 
                     });
                 }
 
