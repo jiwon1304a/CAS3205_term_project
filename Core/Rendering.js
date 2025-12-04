@@ -3,6 +3,7 @@ import { initOrbitControls } from '../util.js';
 import { SHADOW } from '../Settings.js';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 import { SafeTiledLighting } from './SafeTiledLighting.js';
+import { Inspector } from 'three/addons/inspector/Inspector.js';
 
 export function setupRenderer() {
     let scene = new THREE.Scene();
@@ -34,6 +35,7 @@ export function setupRenderer() {
     
     const lighting = new SafeTiledLighting();
     renderer.lighting = lighting;
+    renderer.inspector = new Inspector();
     
     let postProcessing = new THREE.PostProcessing( renderer );
 

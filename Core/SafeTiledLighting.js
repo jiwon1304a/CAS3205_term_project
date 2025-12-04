@@ -2,7 +2,7 @@
 import * as THREE from 'three/webgpu';
 import { TiledLighting } from 'three/addons/lighting/TiledLighting.js';
 import TiledLightsNode, { circleIntersectsAABB } from 'three/addons/tsl/lighting/TiledLightsNode.js';
-import { attributeArray, int, float, vec2, ivec4, Loop, Fn, If, Return, instanceIndex, screenCoordinate } from 'three/tsl';
+import { attributeArray, int, float, vec2, vec4, ivec4, Loop, Fn, If, Return, instanceIndex, screenCoordinate, Break, positionView, directPointLight } from 'three/tsl';
 
 const NUM_MAX_LIGHTS = 128;
 const TILE_SIZE = 16;
@@ -20,12 +20,28 @@ class SafeTiledLightsNode extends TiledLightsNode {
         return this._lightIndexes.element( this._screenTileIndex.mul( int( this._blocksPerTile ) ).add( int( block ) ) );
     }
 
+    // 현재 픽셀이 속한
     getTile( element ) {
         element = int( element );
         const stride = int( 4 );
         const tileOffset = element.div( stride );
         const tileIndex = this._screenTileIndex.mul( int( this._blocksPerTile ) ).add( tileOffset );
         return this._lightIndexes.element( tileIndex ).element( element.mod( stride ) );
+    }
+
+    getLightCountDebugNode() {
+        return Fn( () => {
+            const count = float( 0 ).toVar();
+            
+            Loop( this._tileLightCount, ( { i } ) => {
+                const lightIndex = this.getTile( i );
+                If( lightIndex.notEqual( int( 0 ) ), () => {
+                    count.addAssign( 1.0 );
+                } );
+            } );
+
+            return count.div( float( this._tileLightCount ) );
+        } )();
     }
 
     create( width, height ) {
@@ -44,12 +60,11 @@ class SafeTiledLightsNode extends TiledLightsNode {
         const lightsData = new Float32Array( maxLights * lightDataSize ); 
         // 2차원 배열로 저장하는데, 첫번째 dimension은 light index, 두번째 dimension은 vec4( pos.x, pos.y, pos.z, distance ), vec4( color.r, color.g, color.b, decay )
         // 배치
-        // [light0]
-        // 0x0000 vec4( pos.x, pos.y, pos.z, distance )
-        // 0x0010 vec4( color.r, color.g, color.b, decay )
+        // lightsData[0][0] 0x0000 vec4( pos.x, pos.y, pos.z, distance )
+        // lightsData[0][1] 0x0010 vec4( color.r, color.g, color.b, decay )
         // [light1]
-        // 0x0020 vec4( pos.x, pos.y, pos.z, distance )
-        // 0x0030 vec4( color.r, color.g, color.b, decay )
+        // lightsData[1][0] 0x0020 vec4( pos.x, pos.y, pos.z, distance )
+        // lightsData[1][1] 0x0030 vec4( color.r, color.g, color.b, decay )
         // ...
         const lightsTexture = new THREE.DataTexture( lightsData, lightsData.length / lightDataSize, 2, THREE.RGBAFormat, THREE.FloatType );
         
@@ -111,6 +126,7 @@ class SafeTiledLightsNode extends TiledLightsNode {
                 lightIndices.element(tileIndex).assign( ivec4( 0 ) );
             }
 
+            // 모든 light를 순회하면서 현재 타일에 영향을 주는 light를 찾음
             Loop( this.maxLights, ( { i: lightIdx } ) => {
 
                 If( numLightsAssigned.greaterThanEqual( this._tileLightCount ).or( int( lightIdx ).greaterThanEqual( int( this._lightsCount ) ) ), () => {

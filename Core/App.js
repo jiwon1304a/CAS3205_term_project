@@ -1,6 +1,6 @@
 import { setupRenderer } from './Rendering.js';
 import * as THREE from 'three/webgpu';
-import { uniform, pass, vec3, mix, step } from 'three/tsl';
+import { uniform, pass, vec3, vec4, mix, step } from 'three/tsl';
 
 export class App {
     constructor() {
@@ -13,6 +13,13 @@ export class App {
 
         // Heatmap sensitivity
         this.heatmapScale = uniform(5.0);
+        
+        // Light Count Overlay Influence
+        this.tileInfluence = uniform(0.0);
+
+        // Add to Inspector
+        const debugFolder = this.renderer.inspector.createParameters('Debug');
+        debugFolder.add(this.tileInfluence, 'value', 0, 1).name('Light Count Overlay');
 
         // Cameras
         this.perspectiveCamera = camera;
@@ -37,6 +44,9 @@ export class App {
         this.onUpdate = []; // 외부에서 등록할 업데이트 콜백들
         
         window.addEventListener('resize', this.resize.bind(this));
+        
+        // Initialize PostProcessing Graph
+        this.updateCompositePass();
     }
 
     get camera() {
@@ -58,9 +68,7 @@ export class App {
         }
         this.orbitControls.update();
         
-        if (this.heatmapEnabled) {
-            this.updateHeatmapPass();
-        }
+        this.updateCompositePass();
     }
 
     async start() {
@@ -80,19 +88,78 @@ export class App {
         // 등록된 업데이트 콜백 실행 (예: Gizmo, UI 업데이트 등)
         this.onUpdate.forEach(callback => callback());
 
-        if (this.heatmapEnabled) {
-            // Force TiledLighting to use the active camera for correct view matrix
-            if (this.lighting && this.lighting.forceCamera !== undefined) {
-                this.lighting.forceCamera = this.activeCamera;
+        const usePostProcessing = this.heatmapEnabled || this.tileInfluence.value > 0;
+
+        if (usePostProcessing) {
+            const lightingNode = this.lighting.getNode(this.scene, this.activeCamera);
+            if (lightingNode) {
+                // Manually update the lighting node to ensure compute shader runs with current camera
+                // This fixes the issue where the heatmap doesn't update when moving the camera
+                const frame = {
+                    renderer: this.renderer,
+                    camera: this.activeCamera,
+                    scene: this.scene,
+                    time: performance.now(),
+                    deltaTime: 0
+                };
+                lightingNode.updateBefore(frame);
             }
             this.postProcessing.render();
-            if (this.lighting && this.lighting.forceCamera !== undefined) {
-                this.lighting.forceCamera = null;
-            }
         } else {
             this.renderer.render(this.scene, this.activeCamera);
         }
         requestAnimationFrame(this.render.bind(this));
+    }
+
+    updateCompositePass() {
+        const scenePass = pass(this.scene, this.activeCamera);
+        
+        // 1. Base Color (Normal Scene or Heatmap)
+        let baseColor;
+        if (this.heatmapEnabled) {
+            // Use average of RGB as intensity
+            const intensity = scenePass.r.add(scenePass.g).add(scenePass.b).div(3.0);
+            const t = intensity.mul(this.heatmapScale).clamp(0.0, 1.0);
+            
+            // Gradient: Blue(0) -> Green(0.5) -> Red(1.0)
+            const blue = vec3(0, 0, 1);
+            const green = vec3(0, 1, 0);
+            const red = vec3(1, 0, 0);
+            
+            const color1 = mix(blue, green, t.mul(2.0));
+            const color2 = mix(green, red, t.sub(0.5).mul(2.0));
+            
+            baseColor = vec4(mix(color1, color2, step(0.5, t)), 1.0);
+        } else {
+            baseColor = scenePass;
+        }
+
+        // 2. Light Count Overlay
+        const node = this.lighting.getNode(this.scene, this.activeCamera);
+        // Ensure the node is sized correctly for the current renderer
+        node.setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+
+        let finalOutput;
+        if (node && node.getLightCountDebugNode) {
+            const ratio = node.getLightCountDebugNode();
+            
+            const blue = vec3(0, 0, 1);
+            const green = vec3(0, 1, 0);
+            const red = vec3(1, 0, 0);
+            
+            const color1 = mix(blue, green, ratio.mul(2.0));
+            const color2 = mix(green, red, ratio.sub(0.5).mul(2.0));
+            const heatmapColor = mix(color1, color2, step(0.5, ratio));
+            
+            // Mix baseColor and heatmapColor based on tileInfluence
+            finalOutput = mix(baseColor, vec4(heatmapColor, 1.0), this.tileInfluence);
+        } else {
+            finalOutput = baseColor;
+        }
+
+        // Composite
+        this.postProcessing.outputNode = finalOutput;
+        this.postProcessing.needsUpdate = true;
     }
 
     toggleLightHeatmap(enable) {
@@ -126,7 +193,6 @@ export class App {
                     obj.material = this._heatmapMaterial;
                 }
             });
-            this.updateHeatmapPass();
         } else {
             // Disable Heatmap: Restore original materials and visibility
             this.scene.traverse((obj) => {
@@ -141,34 +207,8 @@ export class App {
                     delete obj.userData.originalMaterial;
                 }
             });
-            this.postProcessing.outputNode = null;
-            this.postProcessing.needsUpdate = true;
         }
-    }
-
-    updateHeatmapPass() {
-        if (!this.heatmapEnabled) return;
-        
-        const scenePass = pass(this.scene, this.activeCamera);
-        // Use average of RGB as intensity
-        const intensity = scenePass.r.add(scenePass.g).add(scenePass.b).div(3.0);
-        const t = intensity.mul(this.heatmapScale).clamp(0.0, 1.0);
-        
-        // Gradient: Blue(0) -> Green(0.5) -> Red(1.0)
-        const blue = vec3(0, 0, 1);
-        const green = vec3(0, 1, 0);
-        const red = vec3(1, 0, 0);
-        
-        // Mix Blue -> Green
-        const color1 = mix(blue, green, t.mul(2.0));
-        // Mix Green -> Red
-        const color2 = mix(green, red, t.sub(0.5).mul(2.0));
-        
-        // Select based on t >= 0.5
-        const finalColor = mix(color1, color2, step(0.5, t));
-        
-        this.postProcessing.outputNode = finalColor;
-        this.postProcessing.needsUpdate = true;
+        this.updateCompositePass();
     }
 
     resize() {
@@ -189,5 +229,7 @@ export class App {
         this.orthographicCamera.top = frustumSize / 2;
         this.orthographicCamera.bottom = -frustumSize / 2;
         this.orthographicCamera.updateProjectionMatrix();
+        
+        this.updateCompositePass();
     }
 }

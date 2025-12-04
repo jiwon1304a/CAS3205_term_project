@@ -62,7 +62,7 @@ export class UIManager {
             if (v) {
                 this.interaction.select(null);
             }
-        });
+        }).listen();
         
         camFolder.add(this.app.heatmapScale, 'value', 0.1, 50).name('Heatmap Sensitivity');
         
