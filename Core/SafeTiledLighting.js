@@ -4,13 +4,13 @@ import { TiledLighting } from 'three/addons/lighting/TiledLighting.js';
 import TiledLightsNode, { circleIntersectsAABB } from 'three/addons/tsl/lighting/TiledLightsNode.js';
 import { attributeArray, int, float, vec2, ivec4, Loop, Fn, If, Return, instanceIndex, screenCoordinate } from 'three/tsl';
 
-const MAX_LIGHTS = 64;
+const NUM_MAX_LIGHTS = 128;
 const TILE_SIZE = 16;
 const TILE_LIGHT_COUNT = 16;
 
 // Fix for TiledLighting crash: Patch customCacheKey to handle null _compute
 class SafeTiledLightsNode extends TiledLightsNode {
-    constructor( maxLights = MAX_LIGHTS, tileSize = TILE_SIZE, tileLightCount = TILE_LIGHT_COUNT ) {
+    constructor( maxLights = NUM_MAX_LIGHTS, tileSize = TILE_SIZE, tileLightCount = TILE_LIGHT_COUNT ) {
         super( maxLights, tileSize );
         this._tileLightCount = tileLightCount;
         this._blocksPerTile = Math.ceil( tileLightCount / 4 );
@@ -35,11 +35,8 @@ class SafeTiledLightsNode extends TiledLightsNode {
         
         const tileWidth = Math.ceil( bufferSize.width / tileSize );
         const tileHeight = Math.ceil( bufferSize.height / tileSize );
-        const count = tileWidth * tileHeight;
-        
-        // https://unpkg.com/three@0.181.2/examples/jsm/tsl/lighting/TiledLightsNode.js
-        // 원래 코드에서 tile별 light index를 ivec4
-        const blocksPerTile = Math.ceil( _tileLightCount / 4 );
+        const numTiles = tileWidth * tileHeight;
+
 
         // buffers
         // Light마다 2개의 vec4에 pos, distance, rgb, decay를 저장.
@@ -55,26 +52,39 @@ class SafeTiledLightsNode extends TiledLightsNode {
         // 0x0030 vec4( color.r, color.g, color.b, decay )
         // ...
         const lightsTexture = new THREE.DataTexture( lightsData, lightsData.length / lightDataSize, 2, THREE.RGBAFormat, THREE.FloatType );
+        
+        // https://unpkg.com/three@0.181.2/examples/jsm/tsl/lighting/TiledLightsNode.js
+        // 원래 코드에서 타일별 light index를 ivec4로 저장하고 있음
+        // lightIndices buffer layout
+        // [tile0]
+        // 0x0000 [block0] ivec4( lightIndex0, lightIndex1, lightIndex2, lightIndex3 )
+        // 0x0010 [block1] ivec4( lightIndex4, lightIndex5, lightIndex6, lightIndex7 )
+        // 0x0020 [block2] ivec4( lightIndex8, lightIndex9, lightIndex10, lightIndex11 )
+        // 0x0030 [block3] ivec4( lightIndex12, lightIndex13, lightIndex14, lightIndex15 )
+        // [tile1]
+        // 0x0040 [block0] ivec4( lightIndex0, lightIndex1, lightIndex2, lightIndex3 )
+        // 0x0050 [block1] ivec4( lightIndex4, lightIndex5, lightIndex6, lightIndex7 )
+        // ...
+        // 한 타일에 최대 16개의 light index를 저장 가능 (타일당 4개의 ivec4, _tileLightCount = 16 기준)
 
-        // Adjust buffer size for lightIndexes
-        const lightIndexesArray = new Int32Array( count * 4 * blocksPerTile );
-        const lightIndexes = attributeArray( lightIndexesArray, 'ivec4' ).setName( 'lightIndexes' );
+        const blocksPerTile = Math.ceil( _tileLightCount / 4 );
+        // _tileLightCount / 4 * 4를 해서 결과적으로는 한 타일에 _tileLightCount개의 light index를 저장
+        // (정확하게는 4의 배수로 올림)
+        const lightIndicesArray = new Int32Array( numTiles * 4 * blocksPerTile );
+        const lightIndices = attributeArray( lightIndicesArray, 'ivec4' ).setName( 'lightIndexes' );
 
-        // compute
-
-        const getBlock = ( index ) => {
-            // Use blocksPerTile instead of hardcoded 2
-            const tileIndex = instanceIndex.mul( int( blocksPerTile ) ).add( int( index ) );
-            return lightIndexes.element( tileIndex );
-        };
-
+        // 현재 스레드가 담당하는 타일 기준으로 elementIndex번째 light index를 저장하는 위치를 계산
+        // lightIndices에서 해당 위치에 대한 참조를 반환
+        // 100번째 thread에서 elementIndex가 13이라면,
+        // 100번째 타일의 세번째 ivec4의 두번째 요소에 해당
+        // -> index = 100 * blocksPerTile + 4 * 2 + 1 (int형 배열로 해석했을 때)
         const getTile = ( elementIndex ) => {
             elementIndex = int( elementIndex );
-            const stride = int( 4 );
-            const tileOffset = elementIndex.div( stride );
-            // Use blocksPerTile instead of hardcoded 2
-            const tileIndex = instanceIndex.mul( int( blocksPerTile ) ).add( tileOffset );
-            return lightIndexes.element( tileIndex ).element( elementIndex.mod( stride ) );
+            const stride = int( 4 ); // 한 블럭에 4개의 int가 들어가니까
+            const offsetBlock = elementIndex.div( stride );
+            const tileIndex = instanceIndex.mul( int( blocksPerTile ) );
+            const blockIndex = tileIndex.add( offsetBlock );
+            return lightIndices.element( blockIndex ).element( elementIndex.mod( stride ) );
         };
 
         const compute = Fn( () => {
@@ -92,20 +102,22 @@ class SafeTiledLightsNode extends TiledLightsNode {
             const minBounds = tileScreen;
             const maxBounds = minBounds.add( blockSize );
 
-            const index = int( 0 ).toVar();
+            const numLightsAssigned = int( 0 ).toVar();
 
             // Initialize all blocks
             for ( let j = 0; j < blocksPerTile; j ++ ) {
-                getBlock( j ).assign( ivec4( 0 ) );
+                const tileOffset = instanceIndex.mul( int( blocksPerTile ) );
+                const tileIndex = tileOffset.add( int( j ) );
+                lightIndices.element(tileIndex).assign( ivec4( 0 ) );
             }
 
-            Loop( this.maxLights, ( { i } ) => {
+            Loop( this.maxLights, ( { i: lightIdx } ) => {
 
-                If( index.greaterThanEqual( this._tileLightCount ).or( int( i ).greaterThanEqual( int( this._lightsCount ) ) ), () => {
+                If( numLightsAssigned.greaterThanEqual( this._tileLightCount ).or( int( lightIdx ).greaterThanEqual( int( this._lightsCount ) ) ), () => {
                     Return();
                 } );
 
-                const { viewPosition, distance } = this.getLightData( i );
+                const { viewPosition, distance } = this.getLightData( lightIdx );
                 const projectedPosition = cameraProjectionMatrix.mul( viewPosition );
                 const ndc = projectedPosition.div( projectedPosition.w );
                 const screenPosition = ndc.xy.mul( 0.5 ).add( 0.5 ).flipY();
@@ -114,15 +126,17 @@ class SafeTiledLightsNode extends TiledLightsNode {
                 const pointRadius = distance.div( distanceFromCamera );
 
                 If( circleIntersectsAABB( screenPosition, pointRadius, minBounds, maxBounds ), () => {
-                    If( index.lessThan( this._tileLightCount ), () => {
-                        getTile( index ).assign( i.add( int( 1 ) ) );
-                        index.addAssign( int( 1 ) );
+                    If( numLightsAssigned.lessThan( this._tileLightCount ), () => {
+                        // 0이 저장되어있으면 tile을 패스하도록 되어있으므로, light index + 1을 저장
+                        // 나중에 읽을 때는 -1을 해서 실제 light index를 얻음
+                        getTile( numLightsAssigned ).assign( lightIdx.add( int( 1 ) ) );
+                        numLightsAssigned.addAssign( int( 1 ) );
                     } );
                 } );
 
             } );
 
-        } )().compute( count ).setName( 'Update Tiled Lights' );
+        } )().compute( numTiles ).setName( 'Update Tiled Lights' );
 
         // screen coordinate lighting indexes
 
@@ -132,7 +146,7 @@ class SafeTiledLightsNode extends TiledLightsNode {
         // assigns
 
         this._bufferSize = bufferSize;
-        this._lightIndexes = lightIndexes;
+        this._lightIndexes = lightIndices;
         this._screenTileIndex = screenTileIndex;
         this._compute = compute;
         this._lightsTexture = lightsTexture;
@@ -148,7 +162,7 @@ export class SafeTiledLighting extends TiledLighting {
     }
     createNode( lights = [] ) {
         // Use SafeTiledLightsNode with fixed create method
-        const node = new SafeTiledLightsNode(MAX_LIGHTS, this.tileSize, this.tileLightCount);
+        const node = new SafeTiledLightsNode(NUM_MAX_LIGHTS, this.tileSize, this.tileLightCount);
         node.setLights(lights);
         
         const originalCacheKey = node.customCacheKey.bind( node );
