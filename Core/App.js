@@ -16,10 +16,12 @@ export class App {
         
         // Light Count Overlay Influence
         this.tileInfluence = uniform(0.0);
+        this.debugMode = 'Light Count';
 
         // Add to Inspector
         const debugFolder = this.renderer.inspector.createParameters('Debug');
-        debugFolder.add(this.tileInfluence, 'value', 0, 1).name('Light Count Overlay');
+        debugFolder.add(this.tileInfluence, 'value', 0, 1).name('Overlay Intensity');
+        debugFolder.add(this, 'debugMode', ['Light Count', 'Compute Debug']).name('Debug Mode').onChange(() => this.updateCompositePass());
 
         // Cameras
         this.perspectiveCamera = camera;
@@ -135,13 +137,21 @@ export class App {
 
         // 2. Light Count Overlay
         const node = this.lighting.getNode(this.scene, this.activeCamera);
-        // Ensure the node is sized correctly for the current renderer
-        node.setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+        if (node) {
+            // Ensure the node is sized correctly for the current renderer
+            node.setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+        }
 
-        let finalOutput;
-        if (node && node.getLightCountDebugNode) {
-            const ratio = node.getLightCountDebugNode();
-            
+        let ratio = null;
+        if (node) {
+            if (this.debugMode === 'Compute Debug' && node.getDebugValueNode) {
+                ratio = node.getDebugValueNode();
+            } else if (this.debugMode === 'Light Count' && node.getLightCountDebugNode) {
+                ratio = node.getLightCountDebugNode();
+            }
+        }
+
+        if (ratio) {
             const blue = vec3(0, 0, 1);
             const green = vec3(0, 1, 0);
             const red = vec3(1, 0, 0);
@@ -151,13 +161,11 @@ export class App {
             const heatmapColor = mix(color1, color2, step(0.5, ratio));
             
             // Mix baseColor and heatmapColor based on tileInfluence
-            finalOutput = mix(baseColor, vec4(heatmapColor, 1.0), this.tileInfluence);
+            this.postProcessing.outputNode = mix(baseColor, vec4(heatmapColor, 1.0), this.tileInfluence);
         } else {
-            finalOutput = baseColor;
+            this.postProcessing.outputNode = baseColor;
         }
 
-        // Composite
-        this.postProcessing.outputNode = finalOutput;
         this.postProcessing.needsUpdate = true;
     }
 

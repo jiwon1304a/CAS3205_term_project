@@ -16,7 +16,7 @@ export class World {
         this.floor.addTo(this.scene);
 
         // Skybox (default params, can be updated later)
-        this.sky = new Skybox({ size: 1000, color: '#87CEEB' }).addTo(this.scene);
+        this.sky = new Skybox({ size: 1000, color: '#ffffffff' }).addTo(this.scene);
     }
 
     createBox({ width = 1, height = 1, depth = 1, color = 0x0077ff, position = { x: 0, y: 0, z: 0 } } = {}) {

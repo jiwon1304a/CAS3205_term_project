@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import Mesh from './Mesh.js';
 
 export class Box extends Mesh {
-    constructor({ width = 1, height = 1, depth = 1, color = 0x0077ff, metalness = 0.5, roughness = 0.3, position = { x: 0, y: 0, z: 0 }, name = '' } = {}) {
+    constructor({ width = 1, height = 1, depth = 1, color = 0x0077ff, metalness = 0.0, roughness = 1.0, position = { x: 0, y: 0, z: 0 }, name = '' } = {}) {
         const posVec = new THREE.Vector3(position.x || 0, position.y || 0, position.z || 0);
         super({ position: posVec, name });
 
@@ -16,6 +16,9 @@ export class Box extends Mesh {
         this.setMesh(mesh);
         this._selected = false;
         this._originalEmissive = this.material.emissive ? this.material.emissive.clone() : new THREE.Color(0x000000);
+        
+        // Ensure material is updated to pick up lighting environment immediately
+        this.material.needsUpdate = true;
     }
 
     // Maintain original API surface

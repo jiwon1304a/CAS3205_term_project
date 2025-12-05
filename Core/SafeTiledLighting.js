@@ -2,11 +2,11 @@
 import * as THREE from 'three/webgpu';
 import { TiledLighting } from 'three/addons/lighting/TiledLighting.js';
 import TiledLightsNode, { circleIntersectsAABB } from 'three/addons/tsl/lighting/TiledLightsNode.js';
-import { attributeArray, int, float, vec2, vec4, ivec4, Loop, Fn, If, Return, instanceIndex, screenCoordinate, Break, positionView, directPointLight } from 'three/tsl';
+import { attributeArray, int, float, vec2, vec3, vec4, ivec4, Loop, Fn, If, Return, instanceIndex, screenCoordinate, Break, positionView, directPointLight } from 'three/tsl';
 
-const NUM_MAX_LIGHTS = 128;
+const NUM_MAX_LIGHTS = 256;
 const TILE_SIZE = 16;
-const TILE_LIGHT_COUNT = 16;
+const TILE_LIGHT_COUNT = 32;
 
 // Fix for TiledLighting crash: Patch customCacheKey to handle null _compute
 class SafeTiledLightsNode extends TiledLightsNode {
@@ -44,6 +44,12 @@ class SafeTiledLightsNode extends TiledLightsNode {
         } )();
     }
 
+    getDebugValueNode() {
+        return Fn( () => {
+            return this._debugValue.element( this._screenTileIndex );
+        } )();
+    }
+
     setLights( lights ) {
         const { tiledLights, materialLights } = this;
 
@@ -78,7 +84,6 @@ class SafeTiledLightsNode extends TiledLightsNode {
         const tileWidth = Math.ceil( bufferSize.width / tileSize );
         const tileHeight = Math.ceil( bufferSize.height / tileSize );
         const numTiles = tileWidth * tileHeight;
-
 
         // buffers
         // Light마다 2개의 vec4에 pos, distance, rgb, decay를 저장.
@@ -128,7 +133,16 @@ class SafeTiledLightsNode extends TiledLightsNode {
             return lightIndices.element( blockIndex ).element( elementIndex.mod( stride ) );
         };
 
+        const debugValueArray = new Float32Array( numTiles );
+        const debugValue = attributeArray( debugValueArray, 'float' ).setName( 'debugValue' );
+
         const compute = Fn( () => {
+            // Initialize all blocks
+            for ( let j = 0; j < blocksPerTile; j ++ ) {
+                const tileOffset = instanceIndex.mul( int( blocksPerTile ) );
+                const tileIndex = tileOffset.add( int( j ) );
+                lightIndices.element(tileIndex).assign( ivec4( 0 ) );
+            }
 
             const { _cameraProjectionMatrix: cameraProjectionMatrix, _bufferSize: bufferSize, _screenSize: screenSize } = this;
 
@@ -145,29 +159,71 @@ class SafeTiledLightsNode extends TiledLightsNode {
 
             const numLightsAssigned = int( 0 ).toVar();
 
-            // Initialize all blocks
-            for ( let j = 0; j < blocksPerTile; j ++ ) {
-                const tileOffset = instanceIndex.mul( int( blocksPerTile ) );
-                const tileIndex = tileOffset.add( int( j ) );
-                lightIndices.element(tileIndex).assign( ivec4( 0 ) );
-            }
+            // Frustum Planes Calculation
+            const ndcMinX = minBounds.x.mul( 2.0 ).sub( 1.0 );
+            const ndcMaxX = maxBounds.x.mul( 2.0 ).sub( 1.0 );
+            const ndcMinY = maxBounds.y.mul( -2.0 ).add( 1.0 );
+            const ndcMaxY = minBounds.y.mul( -2.0 ).add( 1.0 );
+
+            const projectionMatrixInverse = cameraProjectionMatrix.inverse();
+
+            // clip space (x, y, 1)을 view space로 변환
+            // view space로 변환한 좌표를 카메라 좌표 (0,0,0)이랑 이어서 벡터처럼 사용할 수 있음
+            const getPlaneVec = ( x, y ) => {
+                const clip = vec4( x, y, float( 1.0 ), float( 1.0 ) );
+                const view = projectionMatrixInverse.mul( clip );
+                return view.xyz.div( view.w );
+            };
+
+            // View-space basis vectors
+            const cameraUp    = vec3(0.0, 1.0, 0.0);
+            const cameraRight = vec3(1.0, 0.0, 0.0);
+
+            // (ndcMinX, 0) : 타일의 왼쪽 모서리가 만드는 직선 위의 한 점
+            // (ndcMinX, 0, 1) : 타일이 만드는 박스의 왼쪽 면 위의 한 직선
+            // 위의 clip space상에서의 좌표를 view space로 변환
+            const viewL = getPlaneVec(ndcMinX, float(0.0));
+            const viewR = getPlaneVec(ndcMaxX, float(0.0));
+            const viewB = getPlaneVec(float(0.0), ndcMinY);
+            const viewT = getPlaneVec(float(0.0), ndcMaxY);
+
+            // view space에서 viewL과 cameraUp은 (0,0,0)에서 교차함
+            // 또한 cameraUp은 왼쪽 평면 위에 위치한다.
+            // 따라서 두 벡터의 외적으로 왼쪽 평면의 법선 벡터를 구할 수 있음
+            const planeL = viewL.cross(cameraUp).normalize();
+            const planeR = cameraUp.cross(viewR).normalize();
+            const planeB = viewB.cross(cameraRight).normalize();
+            const planeT = cameraRight.cross(viewT).normalize();
+
+            // 확실하게 겹치지 않는것만 제외
+            const sphereIntersectsFrustum = Fn( ( [ sphereCenter, sphereRadius ] ) => {
+                // 각 평면에 대해서 구한 법선 벡터와 구의 중심을 내적해서 음수이면 구가 평면 뒤에 있다는 뜻
+                // 즉, 구와 frustum이 겹치지 않음
+                If( planeL.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
+                If( planeR.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
+                If( planeB.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
+                If( planeT.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
+                return true;
+            }).setLayout( {
+                name: 'sphereIntersectsFrustum',
+                type: 'bool',
+                inputs: [
+                    { name: 'sphereCenter', type: 'vec3' },
+                    { name: 'sphereRadius', type: 'float' }
+                ]
+            } );
 
             // 모든 light를 순회하면서 현재 타일에 영향을 주는 light를 찾음
             Loop( this.maxLights, ( { i: lightIdx } ) => {
-
+                // 이미 할당된 light 개수가 타일당 최대치에 도달했으면 종료
                 If( numLightsAssigned.greaterThanEqual( this._tileLightCount ).or( int( lightIdx ).greaterThanEqual( int( this._lightsCount ) ) ), () => {
                     Return();
                 } );
 
                 const { viewPosition, distance } = this.getLightData( lightIdx );
-                const projectedPosition = cameraProjectionMatrix.mul( viewPosition );
-                const ndc = projectedPosition.div( projectedPosition.w );
-                const screenPosition = ndc.xy.mul( 0.5 ).add( 0.5 ).flipY();
-
-                const distanceFromCamera = viewPosition.z;
-                const pointRadius = distance.div( distanceFromCamera );
-
-                If( circleIntersectsAABB( screenPosition, pointRadius, minBounds, maxBounds ), () => {
+                const sphereRadius = distance;
+                // If ( circleIntersectsAABB( viewPosition, sphereRadius, minBounds, maxBounds ), () => {
+                If( sphereIntersectsFrustum( viewPosition, sphereRadius ), () => {
                     If( numLightsAssigned.lessThan( this._tileLightCount ), () => {
                         // 0이 저장되어있으면 tile을 패스하도록 되어있으므로, light index + 1을 저장
                         // 나중에 읽을 때는 -1을 해서 실제 light index를 얻음
@@ -175,8 +231,9 @@ class SafeTiledLightsNode extends TiledLightsNode {
                         numLightsAssigned.addAssign( int( 1 ) );
                     } );
                 } );
-
+                debugValue.element( instanceIndex ).assign( float( viewPosition.z ).div( float( 100.0 ) ) );
             } );
+
 
         } )().compute( numTiles ).setName( 'Update Tiled Lights' );
 
@@ -192,6 +249,7 @@ class SafeTiledLightsNode extends TiledLightsNode {
         this._screenTileIndex = screenTileIndex;
         this._compute = compute;
         this._lightsTexture = lightsTexture;
+        this._debugValue = debugValue;
     }
 }
 
