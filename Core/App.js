@@ -15,8 +15,8 @@ export class App {
         this.heatmapScale = uniform(5.0);
         
         // Light Count Overlay Influence
-        this.tileInfluence = uniform(0.0);
-        this.debugMode = 'Light Count';
+        this.tileInfluence = uniform(0.1);
+        this.debugMode = 'Light Count'; // 'Compute Debug' or 'Light Count'
 
         // Add to Inspector
         const debugFolder = this.renderer.inspector.createParameters('Debug');

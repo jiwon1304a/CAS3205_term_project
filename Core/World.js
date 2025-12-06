@@ -16,7 +16,19 @@ export class World {
         this.floor.addTo(this.scene);
 
         // Skybox (default params, can be updated later)
-        this.sky = new Skybox({ size: 1000, color: '#ffffffff' }).addTo(this.scene);
+        this.sky = new Skybox({ size: 1000, color: '#ffffff' }).addTo(this.scene);
+
+        for (let i=0; i < 256; i++)
+        {
+            this.createPointLight({ 
+                            color: Math.floor(Math.random() * 0xffffff), 
+                            intensity: 10 + Math.random() * 20, 
+                            position: new THREE.Vector3((Math.random() - 0.5) * 100, 1 + Math.random() * 4, (Math.random() - 0.5) * 100), 
+                            distance: 2 + Math.random() * 8, 
+                            decay: 1 + Math.random(), 
+                            name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize: 1
+                        });
+        }
     }
 
     createBox({ width = 1, height = 1, depth = 1, color = 0x0077ff, position = { x: 0, y: 0, z: 0 } } = {}) {

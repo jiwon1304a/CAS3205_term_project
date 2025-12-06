@@ -2,11 +2,17 @@
 import * as THREE from 'three/webgpu';
 import { TiledLighting } from 'three/addons/lighting/TiledLighting.js';
 import TiledLightsNode, { circleIntersectsAABB } from 'three/addons/tsl/lighting/TiledLightsNode.js';
-import { attributeArray, int, float, vec2, vec3, vec4, ivec4, Loop, Fn, If, Return, instanceIndex, screenCoordinate, Break, positionView, directPointLight } from 'three/tsl';
+import { attributeArray, int, float, vec2, vec3, vec4, ivec4, mat4, Loop, Fn, If, Return, instanceIndex, screenCoordinate, Break, positionView, directPointLight, uniform } from 'three/tsl';
 
 const NUM_MAX_LIGHTS = 256;
 const TILE_SIZE = 16;
 const TILE_LIGHT_COUNT = 32;
+
+// getPlaneVec: clip space (x, y, 1) -> view space (vec3)
+// This will be created as an Fn inside the compute() scope so it can access
+// the local `projectionMatrixInverse` defined there.
+
+
 
 // Fix for TiledLighting crash: Patch customCacheKey to handle null _compute
 class SafeTiledLightsNode extends TiledLightsNode {
@@ -14,6 +20,12 @@ class SafeTiledLightsNode extends TiledLightsNode {
         super( maxLights, tileSize );
         this._tileLightCount = tileLightCount;
         this._blocksPerTile = Math.ceil( tileLightCount / 4 );
+        this._cameraProjectionMatrixInverse = uniform( 'mat4' );
+    }
+
+    updateBefore( frame ) {
+        super.updateBefore( frame );
+        this._cameraProjectionMatrixInverse.value.copy( this._cameraProjectionMatrix.value ).invert();
     }
 
     getBlock( block = 0 ) {
@@ -144,20 +156,21 @@ class SafeTiledLightsNode extends TiledLightsNode {
                 lightIndices.element(tileIndex).assign( ivec4( 0 ) );
             }
 
-            const { _cameraProjectionMatrix: cameraProjectionMatrix, _bufferSize: bufferSize, _screenSize: screenSize } = this;
+            const { _cameraProjectionMatrix: cameraProjectionMatrix, _cameraProjectionMatrixInverse: cameraProjectionMatrixInverse, _bufferSize: bufferSize, _screenSize: screenSize } = this;
 
             const tiledBufferSize = bufferSize.clone().divideScalar( tileSize ).ceil();
 
+            // !!!vec2맞음
             const tileScreen = vec2(
                 instanceIndex.mod( tiledBufferSize.width ),
                 instanceIndex.div( tiledBufferSize.width )
             ).mul( tileSize ).div( screenSize );
 
-            const blockSize = float( tileSize ).div( screenSize );
-            const minBounds = tileScreen;
-            const maxBounds = minBounds.add( blockSize );
+            const blockSize = float( tileSize ).div( float( screenSize ) );
+            const minBounds = vec2( tileScreen.x, tileScreen.y );
+            const maxBounds = minBounds.add( vec2( float(blockSize), float(blockSize) ) );
 
-            const numLightsAssigned = int( 0 ).toVar();
+            const numLightsAssigned = int( 0 ).toVar(name='numLightsAssigned');
 
             // Frustum Planes Calculation
             const ndcMinX = minBounds.x.mul( 2.0 ).sub( 1.0 );
@@ -165,19 +178,26 @@ class SafeTiledLightsNode extends TiledLightsNode {
             const ndcMinY = maxBounds.y.mul( -2.0 ).add( 1.0 );
             const ndcMaxY = minBounds.y.mul( -2.0 ).add( 1.0 );
 
-            const projectionMatrixInverse = cameraProjectionMatrix.inverse();
-
-            // clip space (x, y, 1)을 view space로 변환
-            // view space로 변환한 좌표를 카메라 좌표 (0,0,0)이랑 이어서 벡터처럼 사용할 수 있음
-            const getPlaneVec = ( x, y ) => {
-                const clip = vec4( x, y, float( 1.0 ), float( 1.0 ) );
-                const view = projectionMatrixInverse.mul( clip );
-                return view.xyz.div( view.w );
-            };
-
             // View-space basis vectors
             const cameraUp    = vec3(0.0, 1.0, 0.0);
             const cameraRight = vec3(1.0, 0.0, 0.0);
+
+            // const ProjMat = cameraProjectionMatrix.toVar(name='ProjMat');
+            // const projectionMatrixInverse = ProjMat.inverse();
+
+            // Fn-style helper: clip space (x, y, 1) -> view space vec3
+            const getPlaneVec = /*@__PURE__*/ Fn( ( [ x, y ] ) => {
+                const clip = vec4( x, y, float( 1.0 ), float( 1.0 ) );
+                const view = cameraProjectionMatrixInverse.mul( clip );
+                return view.xyz.div( view.w );
+            } ).setLayout( {
+                name: 'getPlaneVec',
+                type: 'vec3',
+                inputs: [
+                    { name: 'x', type: 'float' },
+                    { name: 'y', type: 'float' },
+                ]
+            } );
 
             // (ndcMinX, 0) : 타일의 왼쪽 모서리가 만드는 직선 위의 한 점
             // (ndcMinX, 0, 1) : 타일이 만드는 박스의 왼쪽 면 위의 한 직선
@@ -199,11 +219,27 @@ class SafeTiledLightsNode extends TiledLightsNode {
             const sphereIntersectsFrustum = Fn( ( [ sphereCenter, sphereRadius ] ) => {
                 // 각 평면에 대해서 구한 법선 벡터와 구의 중심을 내적해서 음수이면 구가 평면 뒤에 있다는 뜻
                 // 즉, 구와 frustum이 겹치지 않음
-                If( planeL.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
-                If( planeR.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
-                If( planeB.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
-                If( planeT.dot( sphereCenter ).lessThan( sphereRadius.negate() ), () => { return false; } );
-                return true;
+                const distanceL = planeL.dot( sphereCenter );
+                const distanceR = planeR.dot( sphereCenter );
+                const distanceB = planeB.dot( sphereCenter );
+                const distanceT = planeT.dot( sphereCenter );
+                
+                const inL = distanceL.lessThan( sphereRadius );
+                const inR = distanceR.lessThan( sphereRadius );
+                const inB = distanceB.lessThan( sphereRadius );
+                const inT = distanceT.lessThan( sphereRadius );
+
+                const outL = distanceL.greaterThan( sphereRadius.negate() );
+                const outR = distanceR.greaterThan( sphereRadius.negate() );
+                const outB = distanceB.greaterThan( sphereRadius.negate() );
+                const outT = distanceT.greaterThan( sphereRadius.negate() );
+
+                const nearL = inL.and(outL);
+                const nearR = inR.and(outR);
+                const nearB = inB.and(outB);
+                const nearT = inT.and(outT);
+
+                return nearL.and( nearR ).and( nearB ).and( nearT );
             }).setLayout( {
                 name: 'sphereIntersectsFrustum',
                 type: 'bool',
@@ -231,7 +267,7 @@ class SafeTiledLightsNode extends TiledLightsNode {
                         numLightsAssigned.addAssign( int( 1 ) );
                     } );
                 } );
-                debugValue.element( instanceIndex ).assign( float( viewPosition.z ).div( float( 100.0 ) ) );
+                // debugValue.element( instanceIndex ).assign( planeL.dot( viewPosition ).x);
             } );
 
 
