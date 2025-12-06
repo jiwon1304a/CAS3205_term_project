@@ -185,9 +185,9 @@ class SafeTiledLightsNode extends TiledLightsNode {
             // const ProjMat = cameraProjectionMatrix.toVar(name='ProjMat');
             // const projectionMatrixInverse = ProjMat.inverse();
 
-            // Fn-style helper: clip space (x, y, z) -> view space vec3
-            const deproject = /*@__PURE__*/ Fn( ( [ x, y, z ] ) => {
-                const clip = vec4( x, y, z, float( 1.0 ) );
+            // Fn-style helper: clip space (x, y, 1) -> view space vec3
+            const getPlaneVec = /*@__PURE__*/ Fn( ( [ x, y ] ) => {
+                const clip = vec4( x, y, float( 1.0 ), float( 1.0 ) );
                 const view = cameraProjectionMatrixInverse.mul( clip );
                 return view.xyz.div( view.w );
             } ).setLayout( {
@@ -196,67 +196,48 @@ class SafeTiledLightsNode extends TiledLightsNode {
                 inputs: [
                     { name: 'x', type: 'float' },
                     { name: 'y', type: 'float' },
-                    { name: 'z', type: 'float' }
                 ]
             } );
 
-            // deproject되어 나온 frustum에 대해서, 이를 감싸는 AABB를 구함
-            const FLT_MAX = 1e30;
-            let minAABB = vec3( FLT_MAX, FLT_MAX, FLT_MAX ).toVar();
-            let maxAABB = vec3( -FLT_MAX, -FLT_MAX, -FLT_MAX ).toVar();
-            // TopLeftNear
-            const viewTLN = deproject(ndcMinX, ndcMaxY, float(0.0));
-            minAABB = minAABB.min( viewTLN );
-            maxAABB = maxAABB.max( viewTLN );
-            const viewTLF = deproject(ndcMinX, ndcMaxY, float(1.0));
-            minAABB = minAABB.min( viewTLF );
-            maxAABB = maxAABB.max( viewTLF );
-            // TopRightNear
-            const viewTRN = deproject(ndcMaxX, ndcMaxY, float(0.0));
-            minAABB = minAABB.min( viewTRN );
-            maxAABB = maxAABB.max( viewTRN );
-            const viewTRF = deproject(ndcMaxX, ndcMaxY, float(1.0));
-            minAABB = minAABB.min( viewTRF );
-            maxAABB = maxAABB.max( viewTRF );
-            // BottomLeftNear
-            const viewBLN = deproject(ndcMinX, ndcMinY, float(0.0));
-            minAABB = minAABB.min( viewBLN );
-            maxAABB = maxAABB.max( viewBLN );
-            const viewBLF = deproject(ndcMinX, ndcMinY, float(1.0));
-            minAABB = minAABB.min( viewBLF );
-            maxAABB = maxAABB.max( viewBLF );
-            // BottomRightNear
-            const viewBRN = deproject(ndcMaxX, ndcMinY, float(0.0));
-            minAABB = minAABB.min( viewBRN );
-            maxAABB = maxAABB.max( viewBRN );
-            const viewBRF = deproject(ndcMaxX, ndcMinY, float(1.0));
-            minAABB = minAABB.min( viewBRF );
-            maxAABB = maxAABB.max( viewBRF );
+            // (ndcMinX, 0) : 타일의 왼쪽 모서리가 만드는 직선 위의 한 점
+            // (ndcMinX, 0, 1) : 타일이 만드는 박스의 왼쪽 면 위의 한 직선
+            // 위의 clip space상에서의 좌표를 view space로 변환
+            const viewL = getPlaneVec(ndcMinX, float(0.0));
+            const viewR = getPlaneVec(ndcMaxX, float(0.0));
+            const viewB = getPlaneVec(float(0.0), ndcMinY);
+            const viewT = getPlaneVec(float(0.0), ndcMaxY);
 
             // view space에서 viewL과 cameraUp은 (0,0,0)에서 교차함
             // 또한 cameraUp은 왼쪽 평면 위에 위치한다.
             // 따라서 두 벡터의 외적으로 왼쪽 평면의 법선 벡터를 구할 수 있음
+            const planeL = viewL.cross(cameraUp).normalize();
+            const planeR = cameraUp.cross(viewR).normalize();
+            const planeB = viewB.cross(cameraRight).normalize();
+            const planeT = cameraRight.cross(viewT).normalize();
 
-            const sphereAABBIntersection = Fn( ( [ sphereCenter, sphereRadius, boxMin, boxMax ] ) => {
-                const boxCenter = boxMin.add( boxMax ).mul( 0.5 );
-                const aabbExtents = boxMax.sub( boxCenter );
-                const delta = sphereCenter.sub( boxCenter );
-                const vDelta = delta.abs().sub( aabbExtents ).max( vec3( 0.0 ) );
-                const distSq = vDelta.dot( vDelta );
-                return distSq.lessThanEqual( sphereRadius.mul( sphereRadius ) );
+            // 확실하게 겹치지 않는것만 제외
+            const sphereIntersectsFrustum = Fn( ( [ sphereCenter, sphereRadius ] ) => {
+                // 각 평면에 대해서 구한 법선 벡터와 구의 중심을 내적해서 음수이면 구가 평면 뒤에 있다는 뜻
+                // 즉, 구와 frustum이 겹치지 않음
+                // plane은 무조건 (0,0,0)을 지나가므로, 별도의 상수항은 필요없음
+                // 즉 Ax + By + Cz = 0 꼴이고, sphereCenter가 (x, y, z)일 때, Ax + By + Cz의 값이 구의 중심에서 평면까지의 거리
+                const distanceL = planeL.dot( sphereCenter ).abs();
+                const distanceR = planeR.dot( sphereCenter ).abs();
+                const distanceB = planeB.dot( sphereCenter ).abs();
+                const distanceT = planeT.dot( sphereCenter ).abs();
 
-                // const closestPoint = sphereCenter.clamp( boxMin, boxMax );
-                // const diff = sphereCenter.sub( closestPoint );
-                // const distSq = diff.dot( diff );
-                // return distSq.lessThanEqual( sphereRadius.mul( sphereRadius ) );
+                const nearL = distanceL.lessThan( sphereRadius );
+                const nearR = distanceR.lessThan( sphereRadius );
+                const nearB = distanceB.lessThan( sphereRadius );
+                const nearT = distanceT.lessThan( sphereRadius );
+
+                return nearL.or( nearR ).or( nearB ).or( nearT );
             }).setLayout( {
                 name: 'sphereIntersectsFrustum',
                 type: 'bool',
                 inputs: [
                     { name: 'sphereCenter', type: 'vec3' },
-                    { name: 'sphereRadius', type: 'float' },
-                    { name: 'boxMin', type: 'vec3' },
-                    { name: 'boxMax', type: 'vec3' }
+                    { name: 'sphereRadius', type: 'float' }
                 ]
             } );
 
@@ -270,7 +251,7 @@ class SafeTiledLightsNode extends TiledLightsNode {
                 const { viewPosition, distance } = this.getLightData( lightIdx );
                 const sphereRadius = distance;
                 // If ( circleIntersectsAABB( viewPosition, sphereRadius, minBounds, maxBounds ), () => {
-                If( sphereAABBIntersection( viewPosition, sphereRadius, minAABB, maxAABB ), () => {
+                If( sphereIntersectsFrustum( viewPosition, sphereRadius ), () => {
                     If( numLightsAssigned.lessThan( this._tileLightCount ), () => {
                         // 0이 저장되어있으면 tile을 패스하도록 되어있으므로, light index + 1을 저장
                         // 나중에 읽을 때는 -1을 해서 실제 light index를 얻음
@@ -278,9 +259,7 @@ class SafeTiledLightsNode extends TiledLightsNode {
                         numLightsAssigned.addAssign( int( 1 ) );
                     } );
                 } );
-                const center = maxAABB.add( minAABB ).mul( 0.5 );
-                const dist = viewPosition.sub( center ).length().div( 512.0 );;
-                debugValue.element( instanceIndex ).assign( dist );
+                // debugValue.element( instanceIndex ).assign( planeL.dot( viewPosition ).x);
             } );
 
 
