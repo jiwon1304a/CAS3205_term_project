@@ -8,8 +8,8 @@ import { Inspector } from 'three/addons/inspector/Inspector.js';
 export function setupRenderer() {
     let scene = new THREE.Scene();
     
-    let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 20, 50);
+    let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 200.1, 1000);
+    camera.position.set(0, 200, 200);
 
     // const aspect = window.innerWidth / window.innerHeight;
     // const frustumSize = 100;

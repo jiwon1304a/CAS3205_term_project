@@ -202,8 +202,8 @@ class SafeTiledLightsNode extends TiledLightsNode {
 
             // deproject되어 나온 frustum에 대해서, 이를 감싸는 AABB를 구함
             const FLT_MAX = 1e30;
-            let minAABB = vec3( FLT_MAX ).toVar();
-            let maxAABB = vec3( -FLT_MAX ).toVar();
+            let minAABB = vec3( FLT_MAX, FLT_MAX, FLT_MAX ).toVar();
+            let maxAABB = vec3( -FLT_MAX, -FLT_MAX, -FLT_MAX ).toVar();
             // TopLeftNear
             const viewTLN = deproject(ndcMinX, ndcMaxY, float(0.0));
             minAABB = minAABB.min( viewTLN );
@@ -232,7 +232,6 @@ class SafeTiledLightsNode extends TiledLightsNode {
             const viewBRF = deproject(ndcMaxX, ndcMinY, float(1.0));
             minAABB = minAABB.min( viewBRF );
             maxAABB = maxAABB.max( viewBRF );
-
 
             // view space에서 viewL과 cameraUp은 (0,0,0)에서 교차함
             // 또한 cameraUp은 왼쪽 평면 위에 위치한다.
@@ -279,7 +278,9 @@ class SafeTiledLightsNode extends TiledLightsNode {
                         numLightsAssigned.addAssign( int( 1 ) );
                     } );
                 } );
-                debugValue.element( instanceIndex ).assign( minAABB.y.div(0.1) );
+                const center = maxAABB.add( minAABB ).mul( 0.5 );
+                const dist = viewPosition.sub( center ).length().div( 512.0 );;
+                debugValue.element( instanceIndex ).assign( dist );
             } );
 
 

@@ -18,14 +18,29 @@ export class World {
         // Skybox (default params, can be updated later)
         this.sky = new Skybox({ size: 1000, color: '#ffffff' }).addTo(this.scene);
 
-        for (let i=0; i < 1; i++)
+        this.createPointLight({ 
+                color: Math.floor(Math.random() * 0xffffff), 
+                intensity: 10, 
+                position: new THREE.Vector3(0, 10, 0), 
+                distance: 10, 
+                decay: 1, 
+                name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize: 1
+            });
+        // Seeded random generator
+        let seed = 12345;
+        const seededRandom = () => {
+            const x = Math.sin(seed++) * 10000;
+            return x - Math.floor(x);
+        };
+
+        for (let i=0; i < 64; i++)
         {
             this.createPointLight({ 
-                            color: Math.floor(Math.random() * 0xffffff), 
-                            intensity: 10 + Math.random() * 20, 
-                            position: new THREE.Vector3((Math.random() - 0.5) * 100, 1 + Math.random() * 4, (Math.random() - 0.5) * 100), 
-                            distance: 2 + Math.random() * 8, 
-                            decay: 1 + Math.random(), 
+                            color: Math.floor(seededRandom() * 0xffffff), 
+                            intensity: 10 + seededRandom() * 20, 
+                            position: new THREE.Vector3((seededRandom() - 0.5) * 200, 1 + seededRandom() * 4, (seededRandom() - 0.5) * 200), 
+                            distance: 10 + seededRandom() * 8, 
+                            decay: 1 + seededRandom(), 
                             name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize: 1
                         });
         }
