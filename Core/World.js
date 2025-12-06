@@ -18,7 +18,7 @@ export class World {
         // Skybox (default params, can be updated later)
         this.sky = new Skybox({ size: 1000, color: '#ffffff' }).addTo(this.scene);
 
-        for (let i=0; i < 256; i++)
+        for (let i=0; i < 1; i++)
         {
             this.createPointLight({ 
                             color: Math.floor(Math.random() * 0xffffff), 

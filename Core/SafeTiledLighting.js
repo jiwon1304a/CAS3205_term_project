@@ -219,27 +219,19 @@ class SafeTiledLightsNode extends TiledLightsNode {
             const sphereIntersectsFrustum = Fn( ( [ sphereCenter, sphereRadius ] ) => {
                 // 각 평면에 대해서 구한 법선 벡터와 구의 중심을 내적해서 음수이면 구가 평면 뒤에 있다는 뜻
                 // 즉, 구와 frustum이 겹치지 않음
-                const distanceL = planeL.dot( sphereCenter );
-                const distanceR = planeR.dot( sphereCenter );
-                const distanceB = planeB.dot( sphereCenter );
-                const distanceT = planeT.dot( sphereCenter );
-                
-                const inL = distanceL.lessThan( sphereRadius );
-                const inR = distanceR.lessThan( sphereRadius );
-                const inB = distanceB.lessThan( sphereRadius );
-                const inT = distanceT.lessThan( sphereRadius );
+                // plane은 무조건 (0,0,0)을 지나가므로, 별도의 상수항은 필요없음
+                // 즉 Ax + By + Cz = 0 꼴이고, sphereCenter가 (x, y, z)일 때, Ax + By + Cz의 값이 구의 중심에서 평면까지의 거리
+                const distanceL = planeL.dot( sphereCenter ).abs();
+                const distanceR = planeR.dot( sphereCenter ).abs();
+                const distanceB = planeB.dot( sphereCenter ).abs();
+                const distanceT = planeT.dot( sphereCenter ).abs();
 
-                const outL = distanceL.greaterThan( sphereRadius.negate() );
-                const outR = distanceR.greaterThan( sphereRadius.negate() );
-                const outB = distanceB.greaterThan( sphereRadius.negate() );
-                const outT = distanceT.greaterThan( sphereRadius.negate() );
+                const nearL = distanceL.lessThan( sphereRadius );
+                const nearR = distanceR.lessThan( sphereRadius );
+                const nearB = distanceB.lessThan( sphereRadius );
+                const nearT = distanceT.lessThan( sphereRadius );
 
-                const nearL = inL.and(outL);
-                const nearR = inR.and(outR);
-                const nearB = inB.and(outB);
-                const nearT = inT.and(outT);
-
-                return nearL.and( nearR ).and( nearB ).and( nearT );
+                return nearL.or( nearR ).or( nearB ).or( nearT );
             }).setLayout( {
                 name: 'sphereIntersectsFrustum',
                 type: 'bool',
