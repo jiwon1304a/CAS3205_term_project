@@ -16,7 +16,8 @@ export class App {
         
         // Light Count Overlay Influence
         this.tileInfluence = uniform(0.1);
-        this.debugMode = 'Light Count'; // 'Compute Debug' or 'Light Count'
+        this.debugMode = 'Compute Debug'; // 'Compute Debug' or 'Light Count'
+        // this.debugMode = 'Light Count'; // 'Compute Debug' or 'Light Count'
 
         // Add to Inspector
         const debugFolder = this.renderer.inspector.createParameters('Debug');
