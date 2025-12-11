@@ -45,6 +45,7 @@ export class App {
         this.activeCamera = this.perspectiveCamera;
 
         this.onUpdate = []; // 외부에서 등록할 업데이트 콜백들
+        this.tickCount = 0;
         
         window.addEventListener('resize', this.resize.bind(this));
         
@@ -87,14 +88,16 @@ export class App {
                 console.warn('renderer.init() failed:', e);
             }
         }
-        this.renderer.setAnimationLoop(this.render.bind(this));
+        this.renderer.setAnimationLoop(this.tick.bind(this));
     }
 
-    render() {
+    tick() {
+        this.tickCount++;
         this.orbitControls.update();
         
-        if (this.simulation) {
-            this.simulation.calculate(this.world);
+        if (this.simulation &&  this.world.dirty && !this.simulation.isCalculating) {
+            this.world.lastDirtyTickCount = this.tickCount;
+            this.simulation.calculate(this.world, this.world.lastDirtyTickCount);
         }
 
         // 등록된 업데이트 콜백 실행 (예: Gizmo, UI 업데이트 등)
@@ -120,6 +123,8 @@ export class App {
         } else {
             this.renderer.render(this.scene, this.activeCamera);
         }
+
+        this.world.dirty = false;
     }
 
     updateCompositePass() {

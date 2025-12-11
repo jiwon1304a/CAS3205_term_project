@@ -4,22 +4,25 @@ import * as THREE from 'three';
 // functions to get/set currently selected object (which should follow the
 // project's `Object` wrapper API: provide `getObject3D()` and optionally
 // `setPosition()` / `setRotation()` / `setColor()`).
-export function initObjectControls({ gui, params, getSelectedObject, setSelectedObject }) {
+export function initObjectControls({ gui, params, getSelectedObject, setSelectedObject, setDirty }) {
     const positionFolder = gui.addFolder('Position');
     const posXCtrl = positionFolder.add(params, 'posX', -100, 100, 0.1);
     posXCtrl.onChange((v) => { const so = getSelectedObject(); if (so) {
         if (typeof so.setPosition === 'function') so.setPosition(v, params.posY, params.posZ);
         else so.getObject3D().position.set(v, params.posY, params.posZ);
+        if (setDirty) setDirty();
     } });
     const posYCtrl = positionFolder.add(params, 'posY', -100, 100, 0.1);
     posYCtrl.onChange((v) => { const so = getSelectedObject(); if (so) {
         if (typeof so.setPosition === 'function') so.setPosition(params.posX, v, params.posZ);
         else so.getObject3D().position.set(params.posX, v, params.posZ);
+        if (setDirty) setDirty();
     } });
     const posZCtrl = positionFolder.add(params, 'posZ', -100, 100, 0.1);
     posZCtrl.onChange((v) => { const so = getSelectedObject(); if (so) {
         if (typeof so.setPosition === 'function') so.setPosition(params.posX, params.posY, v);
         else so.getObject3D().position.set(params.posX, params.posY, v);
+        if (setDirty) setDirty();
     } });
     positionFolder.open();
 
@@ -31,6 +34,7 @@ export function initObjectControls({ gui, params, getSelectedObject, setSelected
         const rz = THREE.MathUtils.degToRad(params.rotZ);
         if (typeof so.setRotation === 'function') so.setRotation(rx, ry, rz);
         else so.getObject3D().rotation.set(rx, ry, rz);
+        if (setDirty) setDirty();
     } });
     const rotYCtrl = rotationFolder.add(params, 'rotY', -180, 180, 1);
     rotYCtrl.onChange((v) => { const so = getSelectedObject(); if (so) {
@@ -39,6 +43,7 @@ export function initObjectControls({ gui, params, getSelectedObject, setSelected
         const rz = THREE.MathUtils.degToRad(params.rotZ);
         if (typeof so.setRotation === 'function') so.setRotation(rx, ry, rz);
         else so.getObject3D().rotation.set(rx, ry, rz);
+        if (setDirty) setDirty();
     } });
     const rotZCtrl = rotationFolder.add(params, 'rotZ', -180, 180, 1);
     rotZCtrl.onChange((v) => { const so = getSelectedObject(); if (so) {
@@ -47,6 +52,7 @@ export function initObjectControls({ gui, params, getSelectedObject, setSelected
         const rz = THREE.MathUtils.degToRad(v);
         if (typeof so.setRotation === 'function') so.setRotation(rx, ry, rz);
         else so.getObject3D().rotation.set(rx, ry, rz);
+        if (setDirty) setDirty();
     } });
     rotationFolder.open();
 
@@ -55,16 +61,19 @@ export function initObjectControls({ gui, params, getSelectedObject, setSelected
     scaleXCtrl.onChange((v) => {
         const so = getSelectedObject();
         if (so) so.getObject3D().scale.x = v;
+        if (setDirty) setDirty();
     });
     const scaleYCtrl = scaleFolder.add(params, 'scaleY', 0.01, 10, 0.01);
     scaleYCtrl.onChange((v) => {
         const so = getSelectedObject();
         if (so) so.getObject3D().scale.y = v;
+        if (setDirty) setDirty();
     });
     const scaleZCtrl = scaleFolder.add(params, 'scaleZ', 0.01, 10, 0.01);
     scaleZCtrl.onChange((v) => {
         const so = getSelectedObject();
         if (so) so.getObject3D().scale.z = v;
+        if (setDirty) setDirty();
     });
     scaleFolder.open();
 

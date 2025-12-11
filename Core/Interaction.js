@@ -10,6 +10,7 @@ export class Interaction {
         this.gizmo = null;
         
         this.onSelectionChanged = null; // 외부에서 설정할 콜백 (예: UI 업데이트)
+        this.onObjectChanged = null; // 객체 속성 변경 시 콜백
 
         this.initGizmo();
         this.initSelection();
@@ -29,6 +30,9 @@ export class Interaction {
             size: 3, 
             snap: { translate: 1, rotate: 15, scale: 0.1 } 
         });
+        this.gizmo.onTransform = () => {
+            if (this.onObjectChanged) this.onObjectChanged(this.selectedObject);
+        };
         this.app.scene.add(this.gizmo.group);
         this.gizmo.setVisibility(false);
     }

@@ -8,6 +8,8 @@ export class World {
         this.lights = [];
         this.floor = null;
         this.sky = null;
+        this.dirty = false;
+        this.lastDirtyTickCount = 0;
     }
 
     init() {
@@ -25,6 +27,7 @@ export class World {
         const b = new Box({ width, height, depth, color, position });
         b.addTo(this.scene);
         this.boxes.push(b);
+        this.dirty = true;
         return b;
     }
 
@@ -34,6 +37,7 @@ export class World {
         dl.createHelper(this.scene);
         if (typeof dl.setHelperVisible === 'function') dl.setHelperVisible(showHelper);
         this.lights.push(dl);
+        this.dirty = true;
         return dl;
     }
 
@@ -42,6 +46,7 @@ export class World {
         pl.addTo(this.scene);
         pl.createHelper(this.scene);
         this.lights.push(pl);
+        this.dirty = true;
         return pl;
     }
 
@@ -50,6 +55,7 @@ export class World {
         sl.addTo(this.scene);
         sl.createHelper(this.scene);
         this.lights.push(sl);
+        this.dirty = true;
         return sl;
     }
 
@@ -57,6 +63,7 @@ export class World {
         const fv = new FluxVolume({ position, rotation, scale, name });
         fv.addTo(this.scene);
         this.fluxVolumes.push(fv);
+        this.dirty = true;
         return fv;
     }
 }

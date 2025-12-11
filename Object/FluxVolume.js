@@ -1,6 +1,64 @@
 import * as THREE from 'three';
 import Box from './Box.js';
 
+const SAMPLING_POINTS_TEMPLATE = [
+    // Face centers (excluding y=0)
+    { point: new THREE.Vector3(0.5, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) }, // Top
+    { point: new THREE.Vector3(0.5, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) }, // Front
+    { point: new THREE.Vector3(0.5, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) }, // Back
+    { point: new THREE.Vector3(1, 0.5, 0.5), normal: new THREE.Vector3(1, 0, 0) }, // Right
+    { point: new THREE.Vector3(0, 0.5, 0.5), normal: new THREE.Vector3(-1, 0, 0) }, // Left
+
+    // Vertices at y=1
+    // (0, 1, 0)
+    { point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(-1, 0, 0) },
+    { point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(0, 0, -1) },
+
+    // (1, 1, 0)
+    { point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(1, 0, 0) },
+    { point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(0, 0, -1) },
+
+    // (0, 1, 1)
+    { point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(-1, 0, 0) },
+    { point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(0, 0, 1) },
+
+    // (1, 1, 1)
+    { point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(1, 0, 0) },
+    { point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(0, 0, 1) },
+
+    // Top Edge Centers (y=1)
+    // (0.5, 1, 0) - Back Edge
+    { point: new THREE.Vector3(0.5, 1, 0), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(0.5, 1, 0), normal: new THREE.Vector3(0, 0, -1) },
+    // (0.5, 1, 1) - Front Edge
+    { point: new THREE.Vector3(0.5, 1, 1), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(0.5, 1, 1), normal: new THREE.Vector3(0, 0, 1) },
+    // (0, 1, 0.5) - Left Edge
+    { point: new THREE.Vector3(0, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(0, 1, 0.5), normal: new THREE.Vector3(-1, 0, 0) },
+    // (1, 1, 0.5) - Right Edge
+    { point: new THREE.Vector3(1, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) },
+    { point: new THREE.Vector3(1, 1, 0.5), normal: new THREE.Vector3(1, 0, 0) },
+
+    // Vertical Edge Centers (y=0.5)
+    // (0, 0.5, 0) - Back-Left
+    { point: new THREE.Vector3(0, 0.5, 0), normal: new THREE.Vector3(-1, 0, 0) },
+    { point: new THREE.Vector3(0, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) },
+    // (1, 0.5, 0) - Back-Right
+    { point: new THREE.Vector3(1, 0.5, 0), normal: new THREE.Vector3(1, 0, 0) },
+    { point: new THREE.Vector3(1, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) },
+    // (0, 0.5, 1) - Front-Left
+    { point: new THREE.Vector3(0, 0.5, 1), normal: new THREE.Vector3(-1, 0, 0) },
+    { point: new THREE.Vector3(0, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) },
+    // (1, 0.5, 1) - Front-Right
+    { point: new THREE.Vector3(1, 0.5, 1), normal: new THREE.Vector3(1, 0, 0) },
+    { point: new THREE.Vector3(1, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) }
+];
+
 export class FluxVolume extends Box {
     constructor({ position = new THREE.Vector3(), rotation = new THREE.Euler(), scale = new THREE.Vector3(1, 1, 1), name = '' } = {}) {
         super({ position, rotation, scale, name });
@@ -22,38 +80,14 @@ export class FluxVolume extends Box {
 
         const points = [];
 
-        // Face centers (excluding y=0)
-        points.push({ point: new THREE.Vector3(0.5, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) }); // Top
-        points.push({ point: new THREE.Vector3(0.5, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) }); // Front
-        points.push({ point: new THREE.Vector3(0.5, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) }); // Back
-        points.push({ point: new THREE.Vector3(1, 0.5, 0.5), normal: new THREE.Vector3(1, 0, 0) }); // Right
-        points.push({ point: new THREE.Vector3(0, 0.5, 0.5), normal: new THREE.Vector3(-1, 0, 0) }); // Left
-
-        // Vertices at y=1
-        // (0, 1, 0)
-        points.push({ point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(0, 1, 0) });
-        points.push({ point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(-1, 0, 0) });
-        points.push({ point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(0, 0, -1) });
-
-        // (1, 1, 0)
-        points.push({ point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(0, 1, 0) });
-        points.push({ point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(1, 0, 0) });
-        points.push({ point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(0, 0, -1) });
-
-        // (0, 1, 1)
-        points.push({ point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(0, 1, 0) });
-        points.push({ point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(-1, 0, 0) });
-        points.push({ point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(0, 0, 1) });
-
-        // (1, 1, 1)
-        points.push({ point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(0, 1, 0) });
-        points.push({ point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(1, 0, 0) });
-        points.push({ point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(0, 0, 1) });
-
-        // Apply transformations
-        for (const p of points) {
+        for (const template of SAMPLING_POINTS_TEMPLATE) {
+            const p = {
+                point: template.point.clone(),
+                normal: template.normal.clone()
+            };
             p.point.applyMatrix4(matrixWorld);
             p.normal.applyMatrix3(normalMatrix).normalize();
+            points.push(p);
         }
 
         return points;

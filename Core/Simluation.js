@@ -1,16 +1,57 @@
 import * as THREE from 'three';
-import { World } from './World.js';
-import { FluxVolume, PointLight } from '../Object/index.js';
+import { Octree } from 'three/addons/math/Octree.js';
 
 export class Simulation {
-    constructor(world) {
-        this.world = world;
+    constructor() {
+        this.fluxVolumes = [];
+        this.lights = [];
+        this.boxes = [];
         this.attenuationCoefficient = 0.2;
+        
+        // Simple Octree implementation for OBBs
+        this.octree = new SimpleOctree(new THREE.Box3(new THREE.Vector3(-1000, -1000, -1000), new THREE.Vector3(1000, 1000, 1000)));
+        this.isCalculating = false;
     }
 
-    calculate(world) {
-        const fluxVolumes = world.fluxVolumes;
-        const lights = world.lights;
+    registerFluxVolume(fluxVolume) {
+        this.fluxVolumes.push(fluxVolume);
+        this.octree.insert(fluxVolume);
+    }
+
+    registerLight(light) {
+        this.lights.push(light);
+    }
+
+    registerBox(box) {
+        this.boxes.push(box);
+        this.octree.insert(box);
+    }
+
+    clear() {
+        this.fluxVolumes = [];
+        this.lights = [];
+        this.boxes = [];
+        this.octree = new SimpleOctree(new THREE.Box3(new THREE.Vector3(-1000, -1000, -1000), new THREE.Vector3(1000, 1000, 1000)));
+    }
+
+    async calculate(world, tickCount) {
+        if (this.isCalculating && tickCount === undefined) return;
+        this.isCalculating = true;
+
+        // Yield to allow UI updates and event processing
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Rebuild Octree every frame to handle moving objects
+        this.octree = new SimpleOctree(new THREE.Box3(new THREE.Vector3(-1000, -1000, -1000), new THREE.Vector3(1000, 1000, 1000)));
+        for (const box of this.boxes) {
+            this.octree.insert(box);
+        }
+        for (const fluxVolume of this.fluxVolumes) {
+            this.octree.insert(fluxVolume);
+        }
+
+        const fluxVolumes = this.fluxVolumes;
+        const lights = this.lights;
 
         for (let i = 0; i < fluxVolumes.length; i++) {
             const fluxVolume = fluxVolumes[i];
@@ -25,7 +66,7 @@ export class Simulation {
                 for (let j = 0; j < lights.length; j++) {
                     const lightWrapper = lights[j];
                     
-                    totalIntensity += this.calculateDiffuse(lightWrapper, P, N, fluxVolumes, fluxVolume);
+                    totalIntensity += this.calculateDiffuse(lightWrapper, P, N, fluxVolume);
                 }
             }
 
@@ -35,9 +76,15 @@ export class Simulation {
                 fluxVolume._fluxValue = 0;
             }
         }
+
+        this.isCalculating = false;
+
+        if (world && world.lastDirtyTickCount !== tickCount) {
+            this.calculate(world, world.lastDirtyTickCount);
+        }
     }
 
-    calculateDiffuse(lightWrapper, point, normal, fluxVolumes, currentFluxVolume) {
+    calculateDiffuse(lightWrapper, point, normal, currentFluxVolume) {
         const light = lightWrapper.light;
         const color = light.color;
         const intensity = light.intensity;
@@ -48,12 +95,8 @@ export class Simulation {
         const lightRotation = lightWrapper.getObject3D().rotation;
 
         if (light.isDirectionalLight) {
-            // Direction from target to light position (vector pointing to light)
-            // In Light.js, target is at (0, -1, 0), so light points down -Y.
-            // Vector TO light is +Y (0, 1, 0).
             lightDir.set(0, 1, 0).applyEuler(lightRotation).normalize();
         } else {
-            // PointLight or SpotLight
             lightDir.subVectors(lightPosition, point);
             const distance = lightDir.length();
             lightDir.normalize();
@@ -67,9 +110,7 @@ export class Simulation {
             }
 
             if (light.isSpotLight) {
-                // Spot direction is (0, -1, 0) in local space
                 const spotDir = new THREE.Vector3(0, -1, 0).applyEuler(lightRotation).normalize();
-                
                 const lightToPoint = new THREE.Vector3().subVectors(point, lightPosition).normalize();
                 const angleCos = lightToPoint.dot(spotDir);
                 
@@ -79,27 +120,141 @@ export class Simulation {
             }
         }
 
-        // Check occlusion by other FluxVolumes
+        // Check occlusion using Octree
         const ray = new THREE.Ray(point, lightDir);
-        let occlusionLength = 0;
+        const occlusionResult = this.octree.intersectRay(ray, currentFluxVolume);
 
-        for (const volume of fluxVolumes) {
-            if (volume === currentFluxVolume) continue;
-
-            const len = volume.intersectRay(ray);
-            if (len > 0) {
-                occlusionLength += len;
-            }
+        if (occlusionResult.hitBox) {
+            return 0;
         }
 
-        if (occlusionLength > 0) {
-            attenuation *= Math.exp(-this.attenuationCoefficient * occlusionLength);
+        if (occlusionResult.length > 0) {
+            attenuation *= Math.exp(-this.attenuationCoefficient * occlusionResult.length);
         }
 
         const dot = Math.max(normal.dot(lightDir), 0);
-        // Luminance approximation
         const luminance = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
         
         return luminance * intensity * dot * attenuation;
+    }
+}
+
+class SimpleOctree {
+    constructor(bounds, depth = 0, maxDepth = 5) {
+        this.bounds = bounds;
+        this.depth = depth;
+        this.maxDepth = maxDepth;
+        this.objects = [];
+        this.children = [];
+    }
+
+    insert(object) {
+        if (this.children.length > 0) {
+            this._insertIntoChildren(object);
+            return;
+        }
+
+        this.objects.push(object);
+
+        if (this.objects.length > 8 && this.depth < this.maxDepth) {
+            this.split();
+        }
+    }
+
+    _insertIntoChildren(object) {
+        // Simplified: Insert into all overlapping children
+        // For OBBs, exact overlap check is complex, so we use AABB of the object if available,
+        // or just insert into all for now (or check center).
+        // To be correct, we should check intersection of object bounds with child bounds.
+        // Here we assume object has getBoundingBox() or we calculate it.
+        
+        // Fallback: insert into all children that intersect with object's AABB
+        // Since we don't have AABB readily available on the wrapper without calculation:
+        // We'll just put it in the root or split if we can calculate bounds.
+        
+        // For this implementation, let's keep it simple:
+        // If we can't easily determine split, keep in this node.
+        // But to make it an Octree, we must split.
+        
+        // Let's calculate AABB for the object
+        const obj3D = object.getObject3D();
+        const box = new THREE.Box3().setFromObject(obj3D);
+
+        for (const child of this.children) {
+            if (child.bounds.intersectsBox(box)) {
+                child.insert(object);
+            }
+        }
+    }
+
+    split() {
+        const min = this.bounds.min;
+        const max = this.bounds.max;
+        const mid = new THREE.Vector3().addVectors(min, max).multiplyScalar(0.5);
+
+        const centers = [
+            new THREE.Vector3(min.x, min.y, min.z),
+            new THREE.Vector3(mid.x, min.y, min.z),
+            new THREE.Vector3(min.x, mid.y, min.z),
+            new THREE.Vector3(mid.x, mid.y, min.z),
+            new THREE.Vector3(min.x, min.y, mid.z),
+            new THREE.Vector3(mid.x, min.y, mid.z),
+            new THREE.Vector3(min.x, mid.y, mid.z),
+            new THREE.Vector3(mid.x, mid.y, mid.z)
+        ];
+
+        for (let i = 0; i < 8; i++) {
+            const childMin = centers[i];
+            const childMax = new THREE.Vector3().addVectors(childMin, mid.sub(min));
+            this.children.push(new SimpleOctree(new THREE.Box3(childMin, childMax), this.depth + 1, this.maxDepth));
+        }
+
+        // Re-distribute objects
+        const objs = this.objects;
+        this.objects = [];
+        for (const obj of objs) {
+            this._insertIntoChildren(obj);
+        }
+    }
+
+    intersectRay(ray, ignoreObject) {
+        if (!ray.intersectsBox(this.bounds)) return { length: 0, hitBox: false };
+
+        let totalLength = 0;
+        let hitBox = false;
+
+        // Check objects in this node
+        for (const obj of this.objects) {
+            if (obj === ignoreObject) continue;
+            
+            // Check if object has intersectRay method (FluxVolume)
+            if (typeof obj.intersectRay === 'function') {
+                const len = obj.intersectRay(ray);
+                if (len > 0) totalLength += len;
+            } else {
+                // Assume it's a Box or other object without intersectRay
+                // Use AABB check for now, or if it has geometry use raycast
+                const obj3D = obj.getObject3D();
+                const box = new THREE.Box3().setFromObject(obj3D);
+                if (ray.intersectsBox(box)) {
+                    hitBox = true;
+                    // If we hit a solid box, we can stop early if we only care about blocking
+                    // But for correct length accumulation of flux volumes, we might need to continue?
+                    // User asked to return 0 if hit box. So we can return immediately.
+                    return { length: totalLength, hitBox: true };
+                }
+            }
+        }
+
+        // Check children
+        if (this.children.length > 0) {
+            for (const child of this.children) {
+                const result = child.intersectRay(ray, ignoreObject);
+                if (result.hitBox) return { length: totalLength, hitBox: true };
+                totalLength += result.length;
+            }
+        }
+
+        return { length: totalLength, hitBox: false };
     }
 }

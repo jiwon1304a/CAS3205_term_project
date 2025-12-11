@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // Controls for mesh objects: primarily edits material color.
-export function initMeshControls({ gui, params, getSelectedMesh, setSelectedMesh }) {
+export function initMeshControls({ gui, params, getSelectedMesh, setSelectedMesh, setDirty }) {
     const meshFolder = gui.addFolder('Mesh');
     const colorCtrl = meshFolder.addColor(params, 'color');
     colorCtrl.onChange((v) => {
@@ -14,6 +14,7 @@ export function initMeshControls({ gui, params, getSelectedMesh, setSelectedMesh
             const obj3d = m.getObject3D ? m.getObject3D() : m;
             if (obj3d && obj3d.material && obj3d.material.color) obj3d.material.color.set(v);
         }
+        if (setDirty) setDirty();
     });
     meshFolder.open();
 
