@@ -1,4 +1,4 @@
-import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight } from '../Object/index.js';
+import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight, FluxVolume } from '../Object/index.js';
 import * as THREE from 'three/webgpu';
 
 export class World {
@@ -17,6 +17,8 @@ export class World {
 
         // Skybox (default params, can be updated later)
         this.sky = new Skybox({ size: 1000, color: '#87CEEB' }).addTo(this.scene);
+
+        this.fluxVolumes = [];
     }
 
     createBox({ width = 1, height = 1, depth = 1, color = 0x0077ff, position = { x: 0, y: 0, z: 0 } } = {}) {
@@ -49,5 +51,12 @@ export class World {
         sl.createHelper(this.scene);
         this.lights.push(sl);
         return sl;
+    }
+
+    createFluxVolume({ position = new THREE.Vector3(), rotation = new THREE.Euler(), scale = new THREE.Vector3(1, 1, 1), name = '' } = {}) {
+        const fv = new FluxVolume({ position, rotation, scale, name });
+        fv.addTo(this.scene);
+        this.fluxVolumes.push(fv);
+        return fv;
     }
 }

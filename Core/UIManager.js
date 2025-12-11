@@ -1,4 +1,4 @@
-import { createGUI, initObjectControls, initLightControls, initMeshControls } from '../UI/index.js';
+import { createGUI, initObjectControls, initLightControls, initMeshControls, FluxOverlay } from '../UI/index.js';
 import * as THREE from 'three/webgpu';
 
 export class UIManager {
@@ -7,6 +7,8 @@ export class UIManager {
         this.world = world;
         this.interaction = interaction;
         
+        this.fluxOverlay = new FluxOverlay(app, world);
+
         this.gui = createGUI();
         this.params = {
             width: 4, height: 2, depth: 2,
@@ -114,6 +116,12 @@ export class UIManager {
                         decay: 1 + Math.random(), 
                         name: 'SpotLight', icon: 'Assets/spotlight.svg', iconSize 
                     });
+                } else if (type === 'FluxVolume') {
+                    obj = this.world.createFluxVolume({ 
+                        position: new THREE.Vector3((Math.random() - 0.5) * 20, 5 + Math.random() * 10, (Math.random() - 0.5) * 20),
+                        scale: new THREE.Vector3(5 + Math.random() * 10, 5 + Math.random() * 10, 5 + Math.random() * 10),
+                        name: 'FluxVolume'
+                    });
                 }
 
                 if (obj) {
@@ -122,7 +130,7 @@ export class UIManager {
             }
         };
 
-        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight']).name('Type');
+        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume']).name('Type');
         createFolder.add(createParams, 'create').name('Create');
         createFolder.open();
 

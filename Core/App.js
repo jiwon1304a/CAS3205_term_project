@@ -1,6 +1,7 @@
 import { setupRenderer } from './Rendering.js';
 import * as THREE from 'three/webgpu';
 import { uniform, pass, vec3, vec4, mix, step } from 'three/tsl';
+import { Simulation } from './Simluation.js';
 
 export class App {
     constructor() {
@@ -10,6 +11,8 @@ export class App {
         this.orbitControls = orbitControls;
         this.lighting = lighting;
         this.postProcessing = postProcessing;
+        this.world = null;
+        this.simulation = null;
 
         // Heatmap sensitivity
         this.heatmapScale = uniform(5.0);
@@ -53,6 +56,11 @@ export class App {
         return this.activeCamera;
     }
 
+    setWorld(world) {
+        this.world = world;
+        this.simulation = new Simulation(this.world);
+    }
+
     switchCamera(mode) {
         if (mode === 'Perspective') {
             this.activeCamera = this.perspectiveCamera;
@@ -85,6 +93,10 @@ export class App {
     render() {
         this.orbitControls.update();
         
+        if (this.simulation) {
+            this.simulation.calculate(this.world);
+        }
+
         // 등록된 업데이트 콜백 실행 (예: Gizmo, UI 업데이트 등)
         this.onUpdate.forEach(callback => callback());
 
