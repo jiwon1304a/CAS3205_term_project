@@ -58,6 +58,54 @@ export class FluxVolume extends Box {
 
         return points;
     }
+
+    intersectRay(ray) {
+        this._object3D.updateMatrixWorld();
+        const inverseMatrix = new THREE.Matrix4().copy(this._object3D.matrixWorld).invert();
+        const localRay = ray.clone().applyMatrix4(inverseMatrix);
+
+        const min = new THREE.Vector3(0, 0, 0);
+        const max = new THREE.Vector3(1, 1, 1);
+
+        let tmin = (min.x - localRay.origin.x) / localRay.direction.x;
+        let tmax = (max.x - localRay.origin.x) / localRay.direction.x;
+
+        if (tmin > tmax) [tmin, tmax] = [tmax, tmin];
+
+        let tymin = (min.y - localRay.origin.y) / localRay.direction.y;
+        let tymax = (max.y - localRay.origin.y) / localRay.direction.y;
+
+        if (tymin > tymax) [tymin, tymax] = [tymax, tymin];
+
+        if ((tmin > tymax) || (tymin > tmax)) return -1;
+
+        if (tymin > tmin) tmin = tymin;
+        if (tymax < tmax) tmax = tymax;
+
+        let tzmin = (min.z - localRay.origin.z) / localRay.direction.z;
+        let tzmax = (max.z - localRay.origin.z) / localRay.direction.z;
+
+        if (tzmin > tzmax) [tzmin, tzmax] = [tzmax, tzmin];
+
+        if ((tmin > tzmax) || (tzmin > tmax)) return -1;
+
+        if (tzmin > tmin) tmin = tzmin;
+        if (tzmax < tmax) tmax = tzmax;
+
+        if (tmax < 0) return -1;
+
+        const tEnter = Math.max(tmin, 0);
+        const tExit = tmax;
+
+        const pEnterLocal = localRay.at(tEnter, new THREE.Vector3());
+        const pExitLocal = localRay.at(tExit, new THREE.Vector3());
+
+        const pEnterWorld = pEnterLocal.applyMatrix4(this._object3D.matrixWorld);
+        const pExitWorld = pExitLocal.applyMatrix4(this._object3D.matrixWorld);
+
+        return pEnterWorld.distanceTo(pExitWorld);
+    }
+
 }
 
 export default FluxVolume;

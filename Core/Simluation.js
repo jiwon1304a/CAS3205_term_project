@@ -5,6 +5,7 @@ import { FluxVolume, PointLight } from '../Object/index.js';
 export class Simulation {
     constructor(world) {
         this.world = world;
+        this.attenuationCoefficient = 0.2;
     }
 
     calculate(world) {
@@ -24,7 +25,7 @@ export class Simulation {
                 for (let j = 0; j < lights.length; j++) {
                     const lightWrapper = lights[j];
                     
-                    totalIntensity += this.calculateDiffuse(lightWrapper, P, N);
+                    totalIntensity += this.calculateDiffuse(lightWrapper, P, N, fluxVolumes, fluxVolume);
                 }
             }
 
@@ -36,7 +37,7 @@ export class Simulation {
         }
     }
 
-    calculateDiffuse(lightWrapper, point, normal) {
+    calculateDiffuse(lightWrapper, point, normal, fluxVolumes, currentFluxVolume) {
         const light = lightWrapper.light;
         const color = light.color;
         const intensity = light.intensity;
@@ -76,6 +77,23 @@ export class Simulation {
                     return 0;
                 }
             }
+        }
+
+        // Check occlusion by other FluxVolumes
+        const ray = new THREE.Ray(point, lightDir);
+        let occlusionLength = 0;
+
+        for (const volume of fluxVolumes) {
+            if (volume === currentFluxVolume) continue;
+
+            const len = volume.intersectRay(ray);
+            if (len > 0) {
+                occlusionLength += len;
+            }
+        }
+
+        if (occlusionLength > 0) {
+            attenuation *= Math.exp(-this.attenuationCoefficient * occlusionLength);
         }
 
         const dot = Math.max(normal.dot(lightDir), 0);
