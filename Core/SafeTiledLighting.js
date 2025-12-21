@@ -44,32 +44,6 @@ class SafeTiledLightsNode extends TiledLightsNode {
         } )();
     }
 
-    setLights( lights ) {
-        const { tiledLights, materialLights } = this;
-
-        let materialindex = 0;
-        let tiledIndex = 0;
-
-        for ( const light of lights ) {
-
-            if ( light.isPointLight === true ) {
-
-                tiledLights[ tiledIndex ++ ] = light;
-
-            } else {
-
-                materialLights[ materialindex ++ ] = light;
-
-            }
-
-        }
-
-        materialLights.length = materialindex;
-        tiledLights.length = tiledIndex;
-
-        return THREE.LightsNode.prototype.setLights.call( this, materialLights );
-    }
-
     create( width, height ) {
         const { tileSize, maxLights, _tileLightCount } = this;
 

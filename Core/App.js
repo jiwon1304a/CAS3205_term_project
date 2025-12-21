@@ -133,32 +133,34 @@ export class App {
             baseColor = scenePass;
         }
 
-        // 2. Light Count Overlay
-        const node = this.lighting.getNode(this.scene, this.activeCamera);
-        // Ensure the node is sized correctly for the current renderer
-        node.setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+        if (this.lighting) {
+            // 2. Light Count Overlay
+            const node = this.lighting.getNode(this.scene, this.activeCamera);
+            // Ensure the node is sized correctly for the current renderer
+            node.setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
 
-        let finalOutput;
-        if (node && node.getLightCountDebugNode) {
-            const ratio = node.getLightCountDebugNode();
-            
-            const blue = vec3(0, 0, 1);
-            const green = vec3(0, 1, 0);
-            const red = vec3(1, 0, 0);
-            
-            const color1 = mix(blue, green, ratio.mul(2.0));
-            const color2 = mix(green, red, ratio.sub(0.5).mul(2.0));
-            const heatmapColor = mix(color1, color2, step(0.5, ratio));
-            
-            // Mix baseColor and heatmapColor based on tileInfluence
-            finalOutput = mix(baseColor, vec4(heatmapColor, 1.0), this.tileInfluence);
-        } else {
-            finalOutput = baseColor;
+            let finalOutput;
+            if (node && node.getLightCountDebugNode) {
+                const ratio = node.getLightCountDebugNode();
+                
+                const blue = vec3(0, 0, 1);
+                const green = vec3(0, 1, 0);
+                const red = vec3(1, 0, 0);
+                
+                const color1 = mix(blue, green, ratio.mul(2.0));
+                const color2 = mix(green, red, ratio.sub(0.5).mul(2.0));
+                const heatmapColor = mix(color1, color2, step(0.5, ratio));
+                
+                // Mix baseColor and heatmapColor based on tileInfluence
+                finalOutput = mix(baseColor, vec4(heatmapColor, 1.0), this.tileInfluence);
+            } else {
+                finalOutput = baseColor;
+            }
+
+            // Composite
+            this.postProcessing.outputNode = finalOutput;
+            this.postProcessing.needsUpdate = true;
         }
-
-        // Composite
-        this.postProcessing.outputNode = finalOutput;
-        this.postProcessing.needsUpdate = true;
     }
 
     toggleLightHeatmap(enable) {

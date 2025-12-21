@@ -2,7 +2,6 @@ import * as THREE from 'three/webgpu';
 import { initOrbitControls } from '../util.js';
 import { SHADOW } from '../Settings.js';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
-import { SafeTiledLighting } from './SafeTiledLighting.js';
 import { Inspector } from 'three/addons/inspector/Inspector.js';
 
 export function setupRenderer() {
@@ -32,9 +31,10 @@ export function setupRenderer() {
     // enable shadow map on renderer so lights/meshes can cast/receive shadows
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    
-    const lighting = new SafeTiledLighting();
-    renderer.lighting = lighting;
+    const lighting = null;
+    // const lighting = new SafeTiledLighting();
+    // const lighting = new TiledLighting(1024,16);
+    // renderer.lighting = lighting;
     renderer.inspector = new Inspector();
     
     let postProcessing = new THREE.PostProcessing( renderer );
