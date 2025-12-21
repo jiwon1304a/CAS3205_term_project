@@ -32,6 +32,10 @@ export class World {
     }
 
     createDirectionalLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), name = 'DirectionalLight', icon = '', iconSize = 1, showHelper = true } = {}) {
+        if (this.lights.length >= 7) {
+            console.warn('Maximum number of lights (7) reached. Cannot add more lights.');
+            return null;
+        }
         const dl = new DirectionalLight({ color, intensity, position, name, icon, iconSize });
         dl.addTo(this.scene);
         dl.createHelper(this.scene);
@@ -42,6 +46,10 @@ export class World {
     }
 
     createPointLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 5, 0), distance = 10, decay = 2, name = 'PointLight', icon = '', iconSize = 1 } = {}) {
+        if (this.lights.length >= 7) {
+            console.warn('Maximum number of lights (7) reached. Cannot add more lights.');
+            return null;
+        }
         const pl = new PointLight({ color, intensity, position, distance, decay, name, icon, iconSize });
         pl.addTo(this.scene);
         pl.createHelper(this.scene);
@@ -51,6 +59,10 @@ export class World {
     }
 
     createSpotLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), angle = Math.PI / 6, distance = 0, penumbra = 0, decay = 1, name = 'Spotlight', icon = '', iconSize = 1 } = {}) {
+        if (this.lights.length >= 7) {
+            console.warn('Maximum number of lights (7) reached. Cannot add more lights.');
+            return null;
+        }
         const sl = new Spotlight({ color, intensity, position, angle, distance, penumbra, decay, name, icon, iconSize });
         sl.addTo(this.scene);
         sl.createHelper(this.scene);
@@ -65,5 +77,30 @@ export class World {
         this.fluxVolumes.push(fv);
         this.dirty = true;
         return fv;
+    }
+
+    removeLight(lightWrapper) {
+        const index = this.lights.indexOf(lightWrapper);
+        if (index > -1) {
+            this.lights.splice(index, 1);
+            
+            // Remove from scene
+            if (lightWrapper.getObject3D()) {
+                this.scene.remove(lightWrapper.getObject3D());
+            }
+            
+            // Remove helper
+            const helper = lightWrapper.getHelper();
+            if (helper) {
+                this.scene.remove(helper);
+            }
+            
+            // Dispose resources
+            if (lightWrapper.dispose) {
+                lightWrapper.dispose();
+            }
+            
+            this.dirty = true;
+        }
     }
 }

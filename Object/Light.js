@@ -95,6 +95,8 @@ export class Light extends BaseObject {
     // maintain same API shape as other objects
     setPosition(x = 0, y = 0, z = 0) { super.setPosition(new THREE.Vector3(x, y, z)); this.updateHelper(); return this; }
 
+    setRotation(x = 0, y = 0, z = 0) { super.setRotation(new THREE.Euler(x, y, z)); this.updateHelper(); return this; }
+
     addTo(parent) { 
         if (!parent) return this;
         if (parent) {
@@ -130,23 +132,14 @@ export class Light extends BaseObject {
     getHelper() { return this._helper; }
 
     updateHelper() {
-        // if (!this._helper) return this;
-        // // If helper exists, try to anchor it to this wrapper's world transform so
-        // // it appears exactly where the light wrapper is placed. Some helpers
-        // // compute internal positions at creation time and don't follow parent
-        // // transforms automatically; copying the group's world matrix keeps the
-        // // helper aligned with the wrapper.
-        // try {
-        //     if (this.group && this.group.matrixWorld && this._helper.matrix) {
-        //         this._helper.matrix.copy(this.group.matrixWorld);
-        //         this._helper.matrixAutoUpdate = false;
-        //         this._helper.matrixWorldNeedsUpdate = true;
-        //     }
-        // } catch (e) {}
-        // if (typeof this._helper.update === 'function') {
-        //     try { this._helper.update(); } catch (e) {}
-        // }
-        // return this;
+        if (this._helper) {
+            // Ensure the light's world matrix is up to date
+            if (this.light) this.light.updateMatrixWorld();
+            if (typeof this._helper.update === 'function') {
+                this._helper.update();
+            }
+        }
+        return this;
     }
 }
 
@@ -189,11 +182,6 @@ export class DirectionalLight extends Light {
         }
     }
 
-    setRotation(x = 0, y = 0, z = 0) {
-        super.setRotation(new THREE.Euler(x, y, z));
-        return this;
-    }
-
     setTarget(x = 0, y = 0, z = 0) {
         if (this.light && this.light.target) this.light.target.position.set(x, y, z);
         return this;
@@ -227,8 +215,8 @@ export class PointLight extends Light {
         }
     }
 
-    setDistance(d) { if (this.light) this.light.distance = d; return this; }
-    setDecay(dec) { if (this.light) this.light.decay = dec; return this; }
+    setDistance(d) { if (this.light) this.light.distance = d; this.updateHelper(); return this; }
+    setDecay(dec) { if (this.light) this.light.decay = dec; this.updateHelper(); return this; }
     setShadow(enabled = true) { if (this.light) this.light.castShadow = !!enabled; return this; }
 }
 
@@ -263,10 +251,10 @@ export class Spotlight extends Light {
         }
     }
 
-    setAngle(a) { if (this.light) this.light.angle = a; return this; }
-    setPenumbra(p) { if (this.light) this.light.penumbra = p; return this; }
-    setDistance(d) { if (this.light) this.light.distance = d; return this; }
-    setDecay(dec) { if (this.light) this.light.decay = dec; return this; }
+    setAngle(a) { if (this.light) this.light.angle = a; this.updateHelper(); return this; }
+    setPenumbra(p) { if (this.light) this.light.penumbra = p; this.updateHelper(); return this; }
+    setDistance(d) { if (this.light) this.light.distance = d; this.updateHelper(); return this; }
+    setDecay(dec) { if (this.light) this.light.decay = dec; this.updateHelper(); return this; }
     setShadow(enabled = true) { if (this.light) this.light.castShadow = !!enabled; return this; }
 }
 

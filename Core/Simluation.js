@@ -22,6 +22,13 @@ export class Simulation {
         this.lights.push(light);
     }
 
+    removeLight(light) {
+        const index = this.lights.indexOf(light);
+        if (index > -1) {
+            this.lights.splice(index, 1);
+        }
+    }
+
     registerBox(box) {
         this.boxes.push(box);
         this.quadtree.insert(box);

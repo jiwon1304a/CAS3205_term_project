@@ -73,7 +73,13 @@ export class Object {
     dispose() {
         while (this._object3D.children.length) {
             const c = this._object3D.children.pop();
-            if (c.geometry && c.geometry.dispose) c.geometry.dispose();
+            // Avoid disposing shared geometry of Sprites
+            if (c.isSprite) {
+                // Do not dispose c.geometry as it is shared among all Sprites
+            } else if (c.geometry && c.geometry.dispose) {
+                c.geometry.dispose();
+            }
+            
             if (c.material) {
                 if (Array.isArray(c.material)) c.material.forEach(m => m && m.dispose && m.dispose());
                 else if (c.material.dispose) c.material.dispose();

@@ -168,7 +168,12 @@ export class UIManager {
             gui: this.gui, 
             params: this.params,
             getSelectedLight: () => (this.interaction.selectedObject && typeof this.interaction.selectedObject.getLight === 'function') ? this.interaction.selectedObject : null,
-            setDirty
+            setDirty,
+            removeLight: (light) => {
+                if (this.world) this.world.removeLight(light);
+                if (this.app.simulation) this.app.simulation.removeLight(light);
+                this.interaction.select(null);
+            }
         });
 
         // Mesh Controls

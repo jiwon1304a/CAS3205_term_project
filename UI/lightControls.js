@@ -1,4 +1,4 @@
-export function initLightControls({ gui, params, getSelectedLight, setSelectedLight, setDirty } = {}) {
+export function initLightControls({ gui, params, getSelectedLight, setSelectedLight, setDirty, removeLight } = {}) {
     // Light property controls for the currently-selected light (intensity/color)
     const propFolder = gui.addFolder('Light Properties');
     const intensityCtrl = propFolder.add(params, 'selectedLightIntensity', 0.01, 1000, 0.01).name('Intensity');
@@ -39,6 +39,16 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
         if (l.updateHelper) l.updateHelper();
         if (setDirty) setDirty();
     });
+
+    const removeBtn = {
+        remove: () => {
+            const l = (typeof getSelectedLight === 'function') ? getSelectedLight() : null;
+            if (l && removeLight) {
+                removeLight(l);
+            }
+        }
+    };
+    propFolder.add(removeBtn, 'remove').name('Remove Light');
 
     propFolder.open();
 
