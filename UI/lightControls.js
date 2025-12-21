@@ -1,4 +1,4 @@
-export function initLightControls({ gui, params, getSelectedLight, setSelectedLight } = {}) {
+export function initLightControls({ gui, params, getSelectedLight, setSelectedLight, setDirty } = {}) {
     // Light property controls for the currently-selected light (intensity/color)
     const propFolder = gui.addFolder('Light Properties');
     const intensityCtrl = propFolder.add(params, 'selectedLightIntensity', 0.01, 1000, 0.01).name('Intensity');
@@ -7,6 +7,7 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
         if (!l) return;
         if (typeof l.setIntensity === 'function') l.setIntensity(v);
         else if (l.getLight && l.getLight()) l.getLight().intensity = v;
+        if (setDirty) setDirty();
     });
     const colorCtrl = propFolder.addColor(params, 'selectedLightColor').name('Color');
     colorCtrl.onChange((v) => {
@@ -14,6 +15,7 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
         if (!l) return;
         if (typeof l.setColor === 'function') l.setColor(v);
         else if (l.getLight && l.getLight() && l.getLight().color) l.getLight().color.set(v);
+        if (setDirty) setDirty();
     });
 
     // Distance control (PointLight, SpotLight)
@@ -24,6 +26,7 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
         if (typeof l.setDistance === 'function') l.setDistance(v);
         else if (l.getLight && l.getLight()) l.getLight().distance = v;
         if (l.updateHelper) l.updateHelper();
+        if (setDirty) setDirty();
     });
 
     // Penumbra control (SpotLight)
@@ -34,6 +37,7 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
         if (typeof l.setPenumbra === 'function') l.setPenumbra(v);
         else if (l.getLight && l.getLight()) l.getLight().penumbra = v;
         if (l.updateHelper) l.updateHelper();
+        if (setDirty) setDirty();
     });
 
     propFolder.open();

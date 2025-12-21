@@ -9,6 +9,7 @@ const app = new App();
 // 2. Initialize World (Scene Content: Floor, Skybox, etc.)
 const world = new World(app.scene);
 world.init();
+app.setWorld(world);
 
 // 3. Initialize Interaction (Raycaster, Gizmo, Selection)
 const interaction = new Interaction(app);

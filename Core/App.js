@@ -1,6 +1,7 @@
 import { setupRenderer } from './Rendering.js';
 import * as THREE from 'three/webgpu';
 import { uniform, pass, vec3, vec4, mix, step } from 'three/tsl';
+import { Simulation } from './Simluation.js';
 
 export class App {
     constructor() {
@@ -10,6 +11,8 @@ export class App {
         this.orbitControls = orbitControls;
         this.lighting = lighting;
         this.postProcessing = postProcessing;
+        this.world = null;
+        this.simulation = null;
 
         // Heatmap sensitivity
         this.heatmapScale = uniform(5.0);
@@ -42,6 +45,7 @@ export class App {
         this.activeCamera = this.perspectiveCamera;
 
         this.onUpdate = []; // 외부에서 등록할 업데이트 콜백들
+        this.tickCount = 0;
         
         window.addEventListener('resize', this.resize.bind(this));
         
@@ -51,6 +55,11 @@ export class App {
 
     get camera() {
         return this.activeCamera;
+    }
+
+    setWorld(world) {
+        this.world = world;
+        this.simulation = new Simulation(this.world);
     }
 
     switchCamera(mode) {
@@ -79,12 +88,18 @@ export class App {
                 console.warn('renderer.init() failed:', e);
             }
         }
-        this.renderer.setAnimationLoop(this.render.bind(this));
+        this.renderer.setAnimationLoop(this.tick.bind(this));
     }
 
-    render() {
+    tick() {
+        this.tickCount++;
         this.orbitControls.update();
         
+        if (this.simulation &&  this.world.dirty && !this.simulation.isCalculating) {
+            this.world.lastDirtyTickCount = this.tickCount;
+            this.simulation.calculate(this.world, this.world.lastDirtyTickCount);
+        }
+
         // 등록된 업데이트 콜백 실행 (예: Gizmo, UI 업데이트 등)
         this.onUpdate.forEach(callback => callback());
 
@@ -108,6 +123,8 @@ export class App {
         } else {
             this.renderer.render(this.scene, this.activeCamera);
         }
+
+        this.world.dirty = false;
     }
 
     updateCompositePass() {

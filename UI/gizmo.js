@@ -65,6 +65,7 @@ export class Gizmo {
         this._mode = 'translate';
         this._dragging = false;
         this._activeHandle = null;
+        this.onTransform = null;
 
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
@@ -371,6 +372,7 @@ export class Gizmo {
             if (this._activeHandle.axis === 'X') obj3.position.x = newLocal.x;
             if (this._activeHandle.axis === 'Y') obj3.position.y = newLocal.y;
             if (this._activeHandle.axis === 'Z') obj3.position.z = newLocal.z;
+            if (this.onTransform) this.onTransform();
         } else if (this._activeHandle.type === 'rotate') {
             // rotate mapping: use vertical mouse movement only (delta Y) mapped to
             // degrees via ROTATE_SENSITIVITY. Additionally scale the sensitivity
@@ -417,6 +419,7 @@ export class Gizmo {
             if (this._activeHandle.axis === 'Y') newRot.y = this._startRotation.y + snappedRad;
             if (this._activeHandle.axis === 'Z') newRot.z = this._startRotation.z + snappedRad;
             obj3.rotation.copy(newRot);
+            if (this.onTransform) this.onTransform();
         } else if (this._activeHandle.type === 'scale') {
             // map mouse ray to closest point along axis and use delta to compute scale factor
             this.raycaster.setFromCamera(this.pointer, this.camera);
@@ -436,6 +439,7 @@ export class Gizmo {
             if (this._activeHandle.axis === 'Y') newScale.y = Math.max(GIZMO_CONFIG.MIN_SCALE, newScale.y * factor);
             if (this._activeHandle.axis === 'Z') newScale.z = Math.max(GIZMO_CONFIG.MIN_SCALE, newScale.z * factor);
             obj3.scale.copy(newScale);
+            if (this.onTransform) this.onTransform();
         }
     }
 

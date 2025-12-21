@@ -1,4 +1,4 @@
-import { createGUI, initObjectControls, initLightControls, initMeshControls } from '../UI/index.js';
+import { createGUI, initObjectControls, initLightControls, initMeshControls, FluxOverlay } from '../UI/index.js';
 import * as THREE from 'three/webgpu';
 
 export class UIManager {
@@ -7,6 +7,8 @@ export class UIManager {
         this.world = world;
         this.interaction = interaction;
         
+        this.fluxOverlay = new FluxOverlay(app, world);
+
         this.gui = createGUI();
         this.params = {
             width: 4, height: 2, depth: 2,
@@ -29,6 +31,9 @@ export class UIManager {
         
         // Interaction에서 선택 변경 시 UI 업데이트
         this.interaction.onSelectionChanged = (obj) => this.updateUI(obj);
+        this.interaction.onObjectChanged = (obj) => {
+            this.world.dirty = true;
+        };
         
         // App 루프에서 UI 업데이트 (Gizmo 드래그 시 값 변경 반영)
         this.app.onUpdate.push(this.updateLoop.bind(this));
@@ -86,6 +91,9 @@ export class UIManager {
                     // Wait, addRandomBox calls this.world.createBox and then this.interaction.select(b).
                     // So obj will be undefined if addRandomBox doesn't return.
                     // Let's update addRandomBox to return the box.
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerBox(obj);
+                    }
                 } else if (type === 'DirectionalLight') {
                     obj = this.world.createDirectionalLight({ 
                         color: Math.floor(Math.random() * 0xffffff), 
@@ -94,15 +102,21 @@ export class UIManager {
                         name: 'DirectionalLight', icon: 'Assets/directionallight.svg', iconSize,
                         showHelper: true
                     });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerLight(obj);
+                    }
                 } else if (type === 'PointLight') {
                     obj = this.world.createPointLight({ 
                         color: Math.floor(Math.random() * 0xffffff), 
                         intensity: 10 + Math.random() * 20, 
                         position: new THREE.Vector3((Math.random() - 0.5) * 100, 1 + Math.random() * 4, (Math.random() - 0.5) * 100), 
-                        distance: 2 + Math.random() * 8, 
+                        distance: 2 + Math.random() * 80, 
                         decay: 1 + Math.random(), 
                         name: 'PointLight', icon: 'Assets/pointlight.svg', iconSize 
                     });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerLight(obj);
+                    }
                 } else if (type === 'SpotLight') {
                     obj = this.world.createSpotLight({ 
                         color: Math.floor(Math.random() * 0xffffff), 
@@ -114,6 +128,18 @@ export class UIManager {
                         decay: 1 + Math.random(), 
                         name: 'SpotLight', icon: 'Assets/spotlight.svg', iconSize 
                     });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerLight(obj);
+                    }
+                } else if (type === 'FluxVolume') {
+                    obj = this.world.createFluxVolume({ 
+                        position: new THREE.Vector3((Math.random() - 0.5) * 200, 5 + Math.random() * 10, (Math.random() - 0.5) * 200),
+                        scale: new THREE.Vector3(5 + Math.random() * 10, 5 + Math.random() * 10, 5 + Math.random() * 10),
+                        name: 'FluxVolume'
+                    });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerFluxVolume(obj);
+                    }
                 }
 
                 if (obj) {
@@ -122,23 +148,27 @@ export class UIManager {
             }
         };
 
-        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight']).name('Type');
+        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume']).name('Type');
         createFolder.add(createParams, 'create').name('Create');
         createFolder.open();
+
+        const setDirty = () => { if (this.world) this.world.dirty = true; };
 
         // Object Controls
         this.objectUI = initObjectControls({ 
             gui: this.gui, 
             params: this.params,
             getSelectedObject: () => this.interaction.selectedObject,
-            setSelectedObject: (o) => this.interaction.select(o)
+            setSelectedObject: (o) => this.interaction.select(o),
+            setDirty
         });
 
         // Light Controls (Inspection only)
         this.lightUI = initLightControls({ 
             gui: this.gui, 
             params: this.params,
-            getSelectedLight: () => (this.interaction.selectedObject && typeof this.interaction.selectedObject.getLight === 'function') ? this.interaction.selectedObject : null
+            getSelectedLight: () => (this.interaction.selectedObject && typeof this.interaction.selectedObject.getLight === 'function') ? this.interaction.selectedObject : null,
+            setDirty
         });
 
         // Mesh Controls
@@ -152,7 +182,8 @@ export class UIManager {
                 if (sel.setColor || (obj3d && obj3d.material && obj3d.material.color)) return sel;
                 return null;
             },
-            setSelectedMesh: (m) => this.interaction.select(m)
+            setSelectedMesh: (m) => this.interaction.select(m),
+            setDirty
         });
 
         // Initialize visibility (hide all initially if nothing selected)
