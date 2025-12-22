@@ -10,6 +10,8 @@ export class World {
         this.sky = null;
         this.dirty = false;
         this.lastDirtyTickCount = 0;
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        this.scene.add(this.ambientLight);
     }
 
     init() {
