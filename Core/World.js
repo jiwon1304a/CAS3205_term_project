@@ -55,8 +55,8 @@ export class World {
         return tp;
     }
 
-    createPendantLight({ position = { x: 0, y: 0, z: 0 } } = {}) {
-        const pl = new PendantLight({ position });
+    createPendantLight({ position = { x: 0, y: 0, z: 0 }, color = 0xffffff, intensity = 400, angle = Math.PI / 4, penumbra = 0.5, decay = 1 } = {}) {
+        const pl = new PendantLight({ position, color, intensity, angle, penumbra, decay });
         pl.addTo(this.scene);
         pl.createHelper(this.scene);
         this.boxes.push(pl); // It has geometry

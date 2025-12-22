@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import BaseObject from './Object.js';
 
 export class PendantLight extends BaseObject {
-    constructor({ position = { x: 0, y: 0, z: 0 }, name = 'PendantLight', color = 0xffffff, intensity = 50 } = {}) {
+    constructor({ position = { x: 0, y: 0, z: 0 }, name = 'PendantLight', color = 0xffffff, intensity = 400, angle = Math.PI / 4, penumbra = 0.5, decay = 1 } = {}) {
         const posVec = new THREE.Vector3(position.x || 0, position.y || 0, position.z || 0);
         super({ position: posVec, name });
 
@@ -105,12 +105,8 @@ export class PendantLight extends BaseObject {
         this.intensity = intensity;
         
         // Use SpotLight for downward illumination
-        this.light = new THREE.SpotLight(this.color, this.intensity);
+        this.light = new THREE.SpotLight(this.color, this.intensity, 20, angle, penumbra, decay);
         this.light.position.set(0, 0, 0); // Inside the lens
-        this.light.angle = Math.PI / 8;
-        this.light.penumbra = 0.3;
-        this.light.decay = 1.5;
-        this.light.distance = 20;
         this.light.castShadow = true;
         
         // Shadow settings

@@ -70,7 +70,7 @@ export class UIManager {
             }
         }).listen();
         
-        camFolder.add(this.app.heatmapScale, 'value', 0.1, 5).name('Heatmap Sensitivity');
+        camFolder.add(this.app.heatmapScale, 'value', 0.01, 0.5).name('Heatmap Sensitivity');
         
         camFolder.open();
 
@@ -412,17 +412,13 @@ export class UIManager {
                 const obj = this.world.createPendantLight({
                     position: { x: lightData.position.x, y: lightData.position.y, z: lightData.position.z },
                     color: 0xffffff,
-                    intensity: lightData.intensity || 50
+                    intensity: lightData.intensity || 400,
+                    angle: lightData.angle || Math.PI / 4,
+                    penumbra: lightData.penumbra || 0.5,
+                    decay: lightData.decay || 1
                 });
                 if (obj && this.app.simulation) {
                     this.app.simulation.registerLight(obj);
-                }
-                // Set light properties
-                const light = obj.getLight();
-                if (light) {
-                    light.angle = lightData.angle || Math.PI / 8;
-                    light.penumbra = lightData.penumbra || 0;
-                    light.decay = lightData.decay || 1;
                 }
             });
         }
