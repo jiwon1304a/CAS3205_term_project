@@ -55,7 +55,7 @@ export class World {
         return tp;
     }
 
-    createPendantLight({ position = { x: 0, y: 0, z: 0 }, color = 0xffffff, intensity = 400, angle = Math.PI / 4, penumbra = 0.5, decay = 1 } = {}) {
+    createPendantLight({ position = { x: 0, y: 0, z: 0 }, color = 0xffffff, intensity = 500, angle = Math.PI / 4, penumbra = 0.5, decay = 1 } = {}) {
         const pl = new PendantLight({ position, color, intensity, angle, penumbra, decay });
         pl.addTo(this.scene);
         pl.createHelper(this.scene);
@@ -151,6 +151,23 @@ export class World {
         return this.fluxVolumes
             .filter(obj => obj instanceof Plant)
             .map(plant => plant.getObject3D().position.clone());
+    }
+
+    // Get positions and properties of all PendantLight objects
+    getPendantLightsPositions() {
+        return this.lights
+            .filter(obj => obj instanceof PendantLight)
+            .map(light => {
+                const position = light.getObject3D().position.clone();
+                const lightObj = light.getLight();
+                return {
+                    position: { x: position.x, y: position.y, z: position.z },
+                    intensity: lightObj.intensity,
+                    angle: lightObj.angle,
+                    penumbra: lightObj.penumbra,
+                    decay: lightObj.decay
+                };
+            });
     }
 
     // Get flux information for all Plant objects

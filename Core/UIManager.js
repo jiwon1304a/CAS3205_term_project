@@ -67,32 +67,32 @@ export class UIManager {
         btnOrtho.domElement.style.width = '50%';
         btnOrtho.domElement.style.display = 'inline-block';
 
-        camFolder.add(camParams, 'lightHeatmap').name('Light Heatmap').onChange((v) => {
+        camFolder.add(camParams, 'lightHeatmap').name('조명 히트맵').onChange((v) => {
             this.app.toggleLightHeatmap(v);
             if (v) {
                 this.interaction.select(null);
             }
         }).listen();
         
-        camFolder.add(this.app.heatmapScale, 'value', 0.01, 0.5).name('Heatmap Sensitivity');
+        camFolder.add(this.app.heatmapScale, 'value', 0.01, 0.5).name('민감도');
         
         camFolder.open();
 
         // Greenhouse Scale Controls (always visible)
-        const greenhouseFolder = this.gui.addFolder('Greenhouse Size');
-        greenhouseFolder.add(this.params, 'scaleX', 0.1, 5, 0.1).name('Width').onChange((v) => {
+        const greenhouseFolder = this.gui.addFolder('온실 크기 조절');
+        greenhouseFolder.add(this.params, 'scaleX', 0.1, 5, 0.1).name('가로').onChange((v) => {
             if (this.world.greenhouse) {
                 this.world.greenhouse.getObject3D().scale.x = v;
                 this.world.dirty = true;
             }
         });
-        greenhouseFolder.add(this.params, 'scaleY', 0.1, 5, 0.1).name('Height').onChange((v) => {
+        greenhouseFolder.add(this.params, 'scaleY', 0.1, 5, 0.1).name('높이').onChange((v) => {
             if (this.world.greenhouse) {
                 this.world.greenhouse.getObject3D().scale.y = v;
                 this.world.dirty = true;
             }
         });
-        greenhouseFolder.add(this.params, 'scaleZ', 0.1, 5, 0.1).name('Depth').onChange((v) => {
+        greenhouseFolder.add(this.params, 'scaleZ', 0.1, 5, 0.1).name('세로').onChange((v) => {
             if (this.world.greenhouse) {
                 this.world.greenhouse.getObject3D().scale.z = v;
                 this.world.dirty = true;
@@ -101,7 +101,7 @@ export class UIManager {
         greenhouseFolder.open();
 
         // 1. Create Object Dropdown & Button
-        const createFolder = this.gui.addFolder('Create Object');
+        const createFolder = this.gui.addFolder('추가하기');
         const createParams = {
             
             type: 'Box', // default
@@ -148,7 +148,7 @@ export class UIManager {
                 } else if (type === 'SpotLight') {
                     obj = this.world.createSpotLight({ 
                         color: Math.floor(0xffffff), 
-                        intensity: 400, 
+                        intensity: 500, 
                         position: new THREE.Vector3((Math.random() - 0.5) * 30,  10, (Math.random() - 0.5) * 30), 
                         angle: Math.PI / 8, 
                         penumbra: Math.random() * 0.5, 
@@ -185,8 +185,8 @@ export class UIManager {
 
         if (DEBUG) {
             createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume', 'TomatoPlant']).name('Type');
+            createFolder.add(createParams, 'create').name('Create');
         }
-        createFolder.add(createParams, 'create').name('Create');
 
         // Plant 생성 버튼
         const plantParams = {
@@ -204,7 +204,7 @@ export class UIManager {
                 }
             }
         };
-        createFolder.add(plantParams, 'createPlant').name('Create Plant');
+        createFolder.add(plantParams, 'createPlant').name('식물 추가');
 
         // PendantLight 생성 버튼
         const pendantLightParams = {
@@ -220,7 +220,7 @@ export class UIManager {
                 }
             }
         };
-        createFolder.add(pendantLightParams, 'createPendantLight').name('Create PendantLight');
+        createFolder.add(pendantLightParams, 'createPendantLight').name('조명 추가');
         createFolder.open();
 
         // Save State 버튼
@@ -228,9 +228,15 @@ export class UIManager {
             saveState: () => {
                 const plantsData = this.world.getPlantsPositions();
                 const lightsData = this.world.getPendantLightsPositions();
+                const greenhouseScale = this.world.greenhouse ? {
+                    x: this.world.greenhouse.getObject3D().scale.x,
+                    y: this.world.greenhouse.getObject3D().scale.y,
+                    z: this.world.greenhouse.getObject3D().scale.z
+                } : { x: 1, y: 1, z: 1 };
                 const state = {
                     plants: plantsData,
-                    pendantLights: lightsData
+                    pendantLights: lightsData,
+                    greenhouseScale: greenhouseScale
                 };
                 const dataStr = JSON.stringify(state, null, 2);
                 const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -244,7 +250,7 @@ export class UIManager {
                 URL.revokeObjectURL(url);
             }
         };
-        createFolder.add(saveParams, 'saveState').name('Save State');
+        createFolder.add(saveParams, 'saveState').name('파일로 저장');
 
         // Load State 버튼
         const loadParams = {
@@ -271,7 +277,7 @@ export class UIManager {
                 input.click();
             }
         };
-        createFolder.add(loadParams, 'loadState').name('Load State');
+        createFolder.add(loadParams, 'loadState').name('파일에서 불러오기');
 
         const setDirty = () => { if (this.world) this.world.dirty = true; };
 
@@ -393,10 +399,10 @@ export class UIManager {
         if (this.titleDiv) {
             const fluxInfo = this.world.getPlantsFluxInfo();
             this.titleDiv.innerHTML = `
-                Plants: ${fluxInfo.count}<br>
-                Avg Flux: ${fluxInfo.avg.toFixed(3)}<br>
-                Min Flux: ${fluxInfo.min.toFixed(3)}<br>
-                Max Flux: ${fluxInfo.max.toFixed(3)}
+                식물 수: ${fluxInfo.count}<br>
+                평균 광량: ${fluxInfo.avg.toFixed(3)}<br>
+                최소 광량: ${fluxInfo.min.toFixed(3)}<br>
+                최대 광량: ${fluxInfo.max.toFixed(3)}
             `;
         }
         
@@ -440,7 +446,7 @@ export class UIManager {
                 const obj = this.world.createPendantLight({
                     position: { x: lightData.position.x, y: lightData.position.y, z: lightData.position.z },
                     color: 0xffffff,
-                    intensity: lightData.intensity || 400,
+                    intensity: lightData.intensity || 500,
                     angle: lightData.angle || Math.PI / 4,
                     penumbra: lightData.penumbra || 0.5,
                     decay: lightData.decay || 1
@@ -449,6 +455,19 @@ export class UIManager {
                     this.app.simulation.registerLight(obj);
                 }
             });
+        }
+
+        if (state.greenhouseScale && this.world.greenhouse) {
+            this.world.greenhouse.getObject3D().scale.set(
+                state.greenhouseScale.x,
+                state.greenhouseScale.y,
+                state.greenhouseScale.z
+            );
+            this.world.dirty = true;
+            // Update UI params
+            this.params.scaleX = state.greenhouseScale.x;
+            this.params.scaleY = state.greenhouseScale.y;
+            this.params.scaleZ = state.greenhouseScale.z;
         }
     }
 }

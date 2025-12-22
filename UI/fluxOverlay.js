@@ -62,9 +62,21 @@ export class FluxOverlay {
                 this.overlays.set(volume, label);
             }
 
-            // Update text
-            const value = volume._fluxValue !== undefined ? volume._fluxValue.toFixed(2) : '0.00';
-            label.element.textContent = `Flux: ${value}`;
+            // Update text and color based on flux value
+            const value = volume._fluxValue !== undefined ? volume._fluxValue : 0;
+            const displayValue = value.toFixed(2);
+            
+            let color = 'white'; // default
+            if (value < 40) {
+                color = '#0000ff'; // blue for low flux
+            } else if (value <= 60) {
+                color = '#00ff00'; // green for medium flux
+            } else {
+                color = '#ff0000'; // red for high flux
+            }
+            
+            label.element.textContent = `광량: ${displayValue}`;
+            label.element.style.color = color;
         }
     }
 }

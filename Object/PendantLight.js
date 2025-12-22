@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import BaseObject from './Object.js';
 
 export class PendantLight extends BaseObject {
-    constructor({ position = { x: 0, y: 0, z: 0 }, name = 'PendantLight', color = 0xffffff, intensity = 400, angle = Math.PI / 4, penumbra = 0.5, decay = 1 } = {}) {
+    constructor({ position = { x: 0, y: 0, z: 0 }, name = 'PendantLight', color = 0xffffff, intensity = 500, angle = Math.PI / 4, penumbra = 0.5, decay = 1 } = {}) {
         const posVec = new THREE.Vector3(position.x || 0, position.y || 0, position.z || 0);
         super({ position: posVec, name });
 

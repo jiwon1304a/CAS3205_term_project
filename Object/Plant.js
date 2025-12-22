@@ -276,24 +276,12 @@ export class Plant extends FluxVolume {
         const fluxValue = this._fluxValue;
         let color;
         
-        if (fluxValue <= 0) {
-            color = 0x0000ff; // Blue for 0
-        } else if (fluxValue >= 100) {
-            color = 0xff0000; // Red for 100
-        } else if (fluxValue <= 50) {
-            // Interpolate from blue (0) to green (50)
-            const t = fluxValue / 50;
-            const r = Math.floor(0 * (1 - t) + 0 * t);
-            const g = Math.floor(0 * (1 - t) + 255 * t);
-            const b = Math.floor(255 * (1 - t) + 0 * t);
-            color = (r << 16) | (g << 8) | b;
+        if (fluxValue < 40) {
+            color = 0x0000ff; // Blue for low flux (< 30)
+        } else if (fluxValue <= 60) {
+            color = 0x00ff00; // Green for medium flux (30-70)
         } else {
-            // Interpolate from green (50) to red (100)
-            const t = (fluxValue - 50) / 50;
-            const r = Math.floor(0 * (1 - t) + 255 * t);
-            const g = Math.floor(255 * (1 - t) + 0 * t);
-            const b = Math.floor(0 * (1 - t) + 0 * t);
-            color = (r << 16) | (g << 8) | b;
+            color = 0xff0000; // Red for high flux (> 70)
         }
         
         this.wireframeCube.material.color.setHex(color);

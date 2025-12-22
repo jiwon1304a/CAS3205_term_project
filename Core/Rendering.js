@@ -35,7 +35,7 @@ export function setupRenderer() {
     // const lighting = new SafeTiledLighting();
     // const lighting = new TiledLighting(1024,16);
     // renderer.lighting = lighting;
-    renderer.inspector = new Inspector();
+    // renderer.inspector = new Inspector();
     
     let postProcessing = new THREE.PostProcessing( renderer );
 

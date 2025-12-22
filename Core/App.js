@@ -21,8 +21,8 @@ export class App {
         this.tileInfluence = uniform(0.0);
 
         // Add to Inspector
-        const debugFolder = this.renderer.inspector.createParameters('Debug');
-        debugFolder.add(this.tileInfluence, 'value', 0, 1).name('Light Count Overlay');
+        // const debugFolder = this.renderer.inspector.createParameters('Debug');
+        // debugFolder.add(this.tileInfluence, 'value', 0, 1).name('Light Count Overlay');
 
         // Cameras
         this.perspectiveCamera = camera;
