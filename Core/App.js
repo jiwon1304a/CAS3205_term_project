@@ -106,18 +106,20 @@ export class App {
         const usePostProcessing = this.heatmapEnabled || this.tileInfluence.value > 0;
 
         if (usePostProcessing) {
-            const lightingNode = this.lighting.getNode(this.scene, this.activeCamera);
-            if (lightingNode) {
-                // Manually update the lighting node to ensure compute shader runs with current camera
-                // This fixes the issue where the heatmap doesn't update when moving the camera
-                const frame = {
-                    renderer: this.renderer,
-                    camera: this.activeCamera,
-                    scene: this.scene,
-                    time: performance.now(),
-                    deltaTime: 0
-                };
-                lightingNode.updateBefore(frame);
+            if (this.lighting) {
+                const lightingNode = this.lighting.getNode(this.scene, this.activeCamera);
+                if (lightingNode) {
+                    // Manually update the lighting node to ensure compute shader runs with current camera
+                    // This fixes the issue where the heatmap doesn't update when moving the camera
+                    const frame = {
+                        renderer: this.renderer,
+                        camera: this.activeCamera,
+                        scene: this.scene,
+                        time: performance.now(),
+                        deltaTime: 0
+                    };
+                    lightingNode.updateBefore(frame);
+                }
             }
             this.postProcessing.render();
         } else {
@@ -150,13 +152,14 @@ export class App {
             baseColor = scenePass;
         }
 
+        let finalOutput = baseColor;
+
         if (this.lighting) {
             // 2. Light Count Overlay
             const node = this.lighting.getNode(this.scene, this.activeCamera);
             // Ensure the node is sized correctly for the current renderer
             node.setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
 
-            let finalOutput;
             if (node && node.getLightCountDebugNode) {
                 const ratio = node.getLightCountDebugNode();
                 
@@ -170,14 +173,12 @@ export class App {
                 
                 // Mix baseColor and heatmapColor based on tileInfluence
                 finalOutput = mix(baseColor, vec4(heatmapColor, 1.0), this.tileInfluence);
-            } else {
-                finalOutput = baseColor;
             }
-
-            // Composite
-            this.postProcessing.outputNode = finalOutput;
-            this.postProcessing.needsUpdate = true;
         }
+
+        // Composite
+        this.postProcessing.outputNode = finalOutput;
+        this.postProcessing.needsUpdate = true;
     }
 
     toggleLightHeatmap(enable) {
