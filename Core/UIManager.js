@@ -73,6 +73,22 @@ export class UIManager {
         
         camFolder.open();
 
+        // Greenhouse Scale Controls (always visible)
+        const greenhouseFolder = this.gui.addFolder('Greenhouse Size');
+        greenhouseFolder.add(this.params, 'scaleX', 0.1, 5, 0.1).name('Width').onChange((v) => {
+            if (this.world.greenhouse) {
+                this.world.greenhouse.getObject3D().scale.x = v;
+                this.world.dirty = true;
+            }
+        });
+        greenhouseFolder.add(this.params, 'scaleZ', 0.1, 5, 0.1).name('Depth').onChange((v) => {
+            if (this.world.greenhouse) {
+                this.world.greenhouse.getObject3D().scale.z = v;
+                this.world.dirty = true;
+            }
+        });
+        greenhouseFolder.open();
+
         // 1. Create Object Dropdown & Button
         const createFolder = this.gui.addFolder('Create Object');
         const createParams = {
@@ -120,10 +136,9 @@ export class UIManager {
                 } else if (type === 'SpotLight') {
                     obj = this.world.createSpotLight({ 
                         color: Math.floor(0xffffff), 
-                        intensity: 10 + Math.random() * 40, 
-                        position: new THREE.Vector3((Math.random() - 0.5) * 40, 5 + Math.random() * 15, (Math.random() - 0.5) * 40), 
-                        angle: Math.PI / 8 + Math.random() * (Math.PI / 4), 
-                        distance: 0, 
+                        intensity: 400, 
+                        position: new THREE.Vector3((Math.random() - 0.5) * 30,  10, (Math.random() - 0.5) * 30), 
+                        angle: Math.PI / 8, 
                         penumbra: Math.random() * 0.5, 
                         decay: 1 + Math.random(), 
                         name: 'SpotLight', icon: 'Assets/spotlight.svg', iconSize 
@@ -140,13 +155,6 @@ export class UIManager {
                     if (obj && this.app.simulation) {
                         this.app.simulation.registerFluxVolume(obj);
                     }
-                } else if (type === 'Greenhouse') {
-                    obj = this.world.createGreenhouse({
-                        position: { x: 0, y: 0, z: 0 }
-                    });
-                    if (obj && this.app.simulation) {
-                        this.app.simulation.registerBox(obj);
-                    }
                 } else if (type === 'TomatoPlant') {
                     obj = this.world.createTomatoPlant({
                         position: { x: (Math.random() - 0.5) * 20, y: 0.28, z: (Math.random() - 0.5) * 20 },
@@ -154,14 +162,6 @@ export class UIManager {
                     });
                     if (obj && this.app.simulation) {
                         this.app.simulation.registerBox(obj);
-                    }
-                } else if (type === 'PendantLight') {
-                    obj = this.world.createPendantLight({
-                        position: { x: (Math.random() - 0.5) * 20, y: 5, z: (Math.random() - 0.5) * 20 }
-                    });
-                    if (obj && this.app.simulation) {
-                        this.app.simulation.registerBox(obj);
-                        this.app.simulation.registerLight(obj);
                     }
                 }
 
@@ -171,8 +171,42 @@ export class UIManager {
             }
         };
 
-        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume', 'Greenhouse', 'TomatoPlant', 'PendantLight']).name('Type');
+        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume', 'TomatoPlant']).name('Type');
         createFolder.add(createParams, 'create').name('Create');
+
+        // Plant 생성 버튼
+        const plantParams = {
+            createPlant: () => {
+                const obj = this.world.createPlant({
+                    position: new THREE.Vector3(0, 0, 0),
+                    scale: new THREE.Vector3(2.31, 2.31, 2.31),
+                    name: 'Plant'
+                });
+                if (obj && this.app.simulation) {
+                    this.app.simulation.registerFluxVolume(obj);
+                }
+                if (obj) {
+                    this.interaction.select(obj);
+                }
+            }
+        };
+        createFolder.add(plantParams, 'createPlant').name('Create Plant');
+
+        // PendantLight 생성 버튼
+        const pendantLightParams = {
+            createPendantLight: () => {
+                const obj = this.world.createPendantLight({
+                    position: { x: (Math.random() - 0.5) * 20, y: 5, z: (Math.random() - 0.5) * 20 }
+                });
+                if (obj && this.app.simulation) {
+                    this.app.simulation.registerLight(obj);
+                }
+                if (obj) {
+                    this.interaction.select(obj);
+                }
+            }
+        };
+        createFolder.add(pendantLightParams, 'createPendantLight').name('Create PendantLight');
         createFolder.open();
 
         const setDirty = () => { if (this.world) this.world.dirty = true; };
@@ -289,6 +323,13 @@ export class UIManager {
             if (this.objectUI && this.objectUI.updateFromObject) {
                 this.objectUI.updateFromObject(this.interaction.selectedObject);
             }
+        }
+        
+        // Always update Greenhouse scale UI
+        if (this.world.greenhouse) {
+            const ghScale = this.world.greenhouse.getObject3D().scale;
+            this.params.scaleX = ghScale.x;
+            this.params.scaleZ = ghScale.z;
         }
     }
 }

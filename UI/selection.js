@@ -59,6 +59,7 @@ export function initSelection({ renderer, camera, scene, raycaster, pointer, onS
             if (!obj.userData) continue;
             // support boxes (old), lights (new), or any selectable wrapper via userData.selectable
             if (obj.userData.selectable) { found = obj.userData.selectable; break; }
+            if (obj.userData.fluxVolume) { found = obj.userData.fluxVolume; break; }
             if (obj.userData.box) { found = obj.userData.box; break; }
             if (obj.userData.light) { found = obj.userData.light; break; }
         }

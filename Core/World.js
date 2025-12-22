@@ -1,6 +1,7 @@
-import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight, FluxVolume, Greenhouse, TomatoPlant, PendantLight } from '../Object/index.js';
+import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight, FluxVolume, Greenhouse, TomatoPlant, PendantLight, Plant } from '../Object/index.js';
 import * as THREE from 'three/webgpu';
 
+const MAX_NUM_LIGHTS = 12; // 제한된 수의 조명만 허용
 export class World {
     constructor(scene) {
         this.scene = scene;
@@ -10,7 +11,7 @@ export class World {
         this.sky = null;
         this.dirty = false;
         this.lastDirtyTickCount = 0;
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 1);
         this.scene.add(this.ambientLight);
     }
 
@@ -21,6 +22,9 @@ export class World {
 
         // Skybox (default params, can be updated later)
         this.sky = new Skybox({ size: 1000, color: '#87CEEB' }).addTo(this.scene);
+
+        // Default Greenhouse at center
+        this.greenhouse = this.createGreenhouse({ position: { x: 0, y: 0, z: 0 } });
 
         this.fluxVolumes = [];
     }
@@ -61,9 +65,17 @@ export class World {
         return pl;
     }
 
+    createPlant({ position = new THREE.Vector3(), rotation = new THREE.Euler(), scale = new THREE.Vector3(1, 1, 1), name = '' } = {}) {
+        const plant = new Plant({ position, rotation, scale, name });
+        plant.addTo(this.scene);
+        this.fluxVolumes.push(plant);
+        this.dirty = true;
+        return plant;
+    }
+
     createDirectionalLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), name = 'DirectionalLight', icon = '', iconSize = 1, showHelper = true } = {}) {
-        if (this.lights.length >= 7) {
-            console.warn('Maximum number of lights (7) reached. Cannot add more lights.');
+        if (this.lights.length >= MAX_NUM_LIGHTS) {
+            console.warn(`Maximum number of lights (${MAX_NUM_LIGHTS}) reached. Cannot add more lights.`);
             return null;
         }
         const dl = new DirectionalLight({ color, intensity, position, name, icon, iconSize });
@@ -76,8 +88,8 @@ export class World {
     }
 
     createPointLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 5, 0), distance = 10, decay = 2, name = 'PointLight', icon = '', iconSize = 1 } = {}) {
-        if (this.lights.length >= 7) {
-            console.warn('Maximum number of lights (7) reached. Cannot add more lights.');
+        if (this.lights.length >= MAX_NUM_LIGHTS) {
+            console.warn(`Maximum number of lights (${MAX_NUM_LIGHTS}) reached. Cannot add more lights.`);
             return null;
         }
         const pl = new PointLight({ color, intensity, position, distance, decay, name, icon, iconSize });
@@ -88,9 +100,9 @@ export class World {
         return pl;
     }
 
-    createSpotLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), angle = Math.PI / 6, distance = 0, penumbra = 0, decay = 1, name = 'Spotlight', icon = '', iconSize = 1 } = {}) {
-        if (this.lights.length >= 7) {
-            console.warn('Maximum number of lights (7) reached. Cannot add more lights.');
+    createSpotLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), angle = Math.PI / 6, distance = 10, penumbra = 0, decay = 1, name = 'Spotlight', icon = '', iconSize = 1 } = {}) {
+        if (this.lights.length >= MAX_NUM_LIGHTS) {
+            console.warn(`Maximum number of lights (${MAX_NUM_LIGHTS}) reached. Cannot add more lights.`);
             return null;
         }
         const sl = new Spotlight({ color, intensity, position, angle, distance, penumbra, decay, name, icon, iconSize });

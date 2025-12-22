@@ -247,7 +247,7 @@ export class Greenhouse extends Mesh {
         // Mark all children as selectable parts of this Greenhouse
         group.traverse((child) => {
             if (child.isMesh) {
-                child.userData.selectable = this;
+                child.userData.selectable = null; // Make unselectable
             }
         });
 

@@ -3,9 +3,8 @@ import { Octree } from 'three/addons/math/Octree.js';
 
 export class Simulation {
     constructor() {
-        this.fluxVolumes = [];
-        this.lights = [];
-        this.boxes = [];
+        this.fluxVolumes = []; // Only Plants
+        this.lights = []; // Only PendantLights
         this.attenuationCoefficient = 0.2;
         
         // Simple Quadtree implementation for OBBs
@@ -14,12 +13,18 @@ export class Simulation {
     }
 
     registerFluxVolume(fluxVolume) {
-        this.fluxVolumes.push(fluxVolume);
-        this.quadtree.insert(fluxVolume);
+        // Only accept Plant objects
+        if (fluxVolume.constructor.name === 'Plant') {
+            this.fluxVolumes.push(fluxVolume);
+            this.quadtree.insert(fluxVolume);
+        }
     }
 
     registerLight(light) {
-        this.lights.push(light);
+        // Only accept PendantLight objects
+        if (light.constructor.name === 'PendantLight') {
+            this.lights.push(light);
+        }
     }
 
     removeLight(light) {
@@ -29,15 +34,9 @@ export class Simulation {
         }
     }
 
-    registerBox(box) {
-        this.boxes.push(box);
-        this.quadtree.insert(box);
-    }
-
     clear() {
         this.fluxVolumes = [];
         this.lights = [];
-        this.boxes = [];
         this.quadtree = new SimpleQuadtree(new THREE.Box3(new THREE.Vector3(-1000, -1000, -1000), new THREE.Vector3(1000, 1000, 1000)));
     }
 
@@ -50,9 +49,6 @@ export class Simulation {
 
         // Rebuild Quadtree every frame to handle moving objects
         this.quadtree = new SimpleQuadtree(new THREE.Box3(new THREE.Vector3(-1000, -1000, -1000), new THREE.Vector3(1000, 1000, 1000)));
-        for (const box of this.boxes) {
-            this.quadtree.insert(box);
-        }
         for (const fluxVolume of this.fluxVolumes) {
             this.quadtree.insert(fluxVolume);
         }
@@ -117,7 +113,8 @@ export class Simulation {
             }
 
             if (light.isSpotLight) {
-                const spotDir = new THREE.Vector3(0, -1, 0).applyEuler(lightRotation).normalize();
+                // For PendantLight, direction is always downward (0, -1, 0)
+                const spotDir = new THREE.Vector3(0, -1, 0);
                 const lightToPoint = new THREE.Vector3().subVectors(point, lightPosition).normalize();
                 const angleCos = lightToPoint.dot(spotDir);
                 
@@ -222,13 +219,6 @@ class SimpleQuadtree {
             if (typeof obj.intersectRay === 'function') {
                 const len = obj.intersectRay(ray);
                 if (len > 0) totalLength += len;
-            } else {
-                const obj3D = obj.getObject3D();
-                const box = new THREE.Box3().setFromObject(obj3D);
-                if (ray.intersectsBox(box)) {
-                    hitBox = true;
-                    return { length: totalLength, hitBox: true };
-                }
             }
         }
 
