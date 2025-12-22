@@ -27,6 +27,7 @@ export class UIManager {
         this.objectUI = null;
         this.meshUI = null;
         this.lightUI = null;
+        this.titleDiv = null;
 
         this.initControls();
         
@@ -38,6 +39,9 @@ export class UIManager {
         
         // App 루프에서 UI 업데이트 (Gizmo 드래그 시 값 변경 반영)
         this.app.onUpdate.push(this.updateLoop.bind(this));
+
+        // Add title text in top-left corner
+        this.addTitleText();
     }
 
     initControls() {
@@ -385,12 +389,36 @@ export class UIManager {
             }
         }
         
+        // Update title with Plant flux information
+        if (this.titleDiv) {
+            const fluxInfo = this.world.getPlantsFluxInfo();
+            this.titleDiv.innerHTML = `
+                Plants: ${fluxInfo.count}<br>
+                Avg Flux: ${fluxInfo.avg.toFixed(3)}<br>
+                Min Flux: ${fluxInfo.min.toFixed(3)}<br>
+                Max Flux: ${fluxInfo.max.toFixed(3)}
+            `;
+        }
+        
         // Always update Greenhouse scale UI
         if (this.world.greenhouse) {
             const ghScale = this.world.greenhouse.getObject3D().scale;
             this.params.scaleX = ghScale.x;
             this.params.scaleZ = ghScale.z;
         }
+    }
+
+    addTitleText() {
+        this.titleDiv = document.createElement('div');
+        this.titleDiv.style.position = 'fixed';
+        this.titleDiv.style.top = '10px';
+        this.titleDiv.style.left = '10px';
+        this.titleDiv.style.color = 'white';
+        this.titleDiv.style.fontSize = '16px';
+        this.titleDiv.style.fontFamily = 'Arial, sans-serif';
+        this.titleDiv.style.zIndex = '1000';
+        this.titleDiv.style.pointerEvents = 'none'; // Don't interfere with interactions
+        document.body.appendChild(this.titleDiv);
     }
 
     loadState(state) {

@@ -78,6 +78,11 @@ export class Simulation {
             } else {
                 fluxVolume._fluxValue = 0;
             }
+
+            // Update wireframe color based on flux value
+            if (fluxVolume.updateWireframeColor) {
+                fluxVolume.updateWireframeColor();
+            }
         }
 
         this.isCalculating = false;

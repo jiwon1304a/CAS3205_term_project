@@ -153,19 +153,17 @@ export class World {
             .map(plant => plant.getObject3D().position.clone());
     }
 
-    // Get positions of all PendantLight objects
-    getPendantLightsPositions() {
-        return this.boxes
-            .filter(obj => obj instanceof PendantLight)
-            .map(light => {
-                const lightObj = light.getLight();
-                return {
-                    position: light.getObject3D().position.clone(),
-                    intensity: lightObj.intensity,
-                    angle: lightObj.angle,
-                    penumbra: lightObj.penumbra,
-                    decay: lightObj.decay
-                };
-            });
+    // Get flux information for all Plant objects
+    getPlantsFluxInfo() {
+        const plants = this.fluxVolumes.filter(obj => obj instanceof Plant);
+        if (plants.length === 0) return { count: 0, avg: 0, min: 0, max: 0 };
+
+        const fluxes = plants.map(plant => plant._fluxValue);
+        const sum = fluxes.reduce((a, b) => a + b, 0);
+        const avg = sum / fluxes.length;
+        const min = Math.min(...fluxes);
+        const max = Math.max(...fluxes);
+
+        return { count: plants.length, avg, min, max };
     }
 }
