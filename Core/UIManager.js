@@ -219,6 +219,56 @@ export class UIManager {
         createFolder.add(pendantLightParams, 'createPendantLight').name('Create PendantLight');
         createFolder.open();
 
+        // Save State 버튼
+        const saveParams = {
+            saveState: () => {
+                const plantsData = this.world.getPlantsPositions();
+                const lightsData = this.world.getPendantLightsPositions();
+                const state = {
+                    plants: plantsData,
+                    pendantLights: lightsData
+                };
+                const dataStr = JSON.stringify(state, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'world_state.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        };
+        createFolder.add(saveParams, 'saveState').name('Save State');
+
+        // Load State 버튼
+        const loadParams = {
+            loadState: () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const state = JSON.parse(e.target.result);
+                                this.loadState(state);
+                            } catch (error) {
+                                console.error('Failed to parse JSON:', error);
+                                alert('Invalid JSON file');
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                };
+                input.click();
+            }
+        };
+        createFolder.add(loadParams, 'loadState').name('Load State');
+
         const setDirty = () => { if (this.world) this.world.dirty = true; };
 
             // Object Controls
@@ -340,6 +390,41 @@ export class UIManager {
             const ghScale = this.world.greenhouse.getObject3D().scale;
             this.params.scaleX = ghScale.x;
             this.params.scaleZ = ghScale.z;
+        }
+    }
+
+    loadState(state) {
+        if (state.plants) {
+            state.plants.forEach(pos => {
+                const obj = this.world.createPlant({
+                    position: new THREE.Vector3(pos.x, pos.y, pos.z),
+                    scale: new THREE.Vector3(2.31, 2.31, 2.31),
+                    name: 'Plant'
+                });
+                if (obj && this.app.simulation) {
+                    this.app.simulation.registerFluxVolume(obj);
+                }
+            });
+        }
+
+        if (state.pendantLights) {
+            state.pendantLights.forEach(lightData => {
+                const obj = this.world.createPendantLight({
+                    position: { x: lightData.position.x, y: lightData.position.y, z: lightData.position.z },
+                    color: 0xffffff,
+                    intensity: lightData.intensity || 50
+                });
+                if (obj && this.app.simulation) {
+                    this.app.simulation.registerLight(obj);
+                }
+                // Set light properties
+                const light = obj.getLight();
+                if (light) {
+                    light.angle = lightData.angle || Math.PI / 8;
+                    light.penumbra = lightData.penumbra || 0;
+                    light.decay = lightData.decay || 1;
+                }
+            });
         }
     }
 }

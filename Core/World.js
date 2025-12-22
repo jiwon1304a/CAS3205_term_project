@@ -145,4 +145,27 @@ export class World {
             this.dirty = true;
         }
     }
+
+    // Get positions of all Plant objects
+    getPlantsPositions() {
+        return this.fluxVolumes
+            .filter(obj => obj instanceof Plant)
+            .map(plant => plant.getObject3D().position.clone());
+    }
+
+    // Get positions of all PendantLight objects
+    getPendantLightsPositions() {
+        return this.boxes
+            .filter(obj => obj instanceof PendantLight)
+            .map(light => {
+                const lightObj = light.getLight();
+                return {
+                    position: light.getObject3D().position.clone(),
+                    intensity: lightObj.intensity,
+                    angle: lightObj.angle,
+                    penumbra: lightObj.penumbra,
+                    decay: lightObj.decay
+                };
+            });
+    }
 }
