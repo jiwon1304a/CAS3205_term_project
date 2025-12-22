@@ -40,6 +40,18 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
         if (setDirty) setDirty();
     });
 
+    // Angle control (SpotLight) - displayed in degrees
+    const angleCtrl = propFolder.add(params, 'selectedLightAngle', 0, 90).name('Angle (deg)');
+    angleCtrl.onChange((v) => {
+        const l = (typeof getSelectedLight === 'function') ? getSelectedLight() : null;
+        if (!l) return;
+        const rad = v * (Math.PI / 180);
+        if (typeof l.setAngle === 'function') l.setAngle(rad);
+        else if (l.getLight && l.getLight()) l.getLight().angle = rad;
+        if (l.updateHelper) l.updateHelper();
+        if (setDirty) setDirty();
+    });
+
     const removeBtn = {
         remove: () => {
             const l = (typeof getSelectedLight === 'function') ? getSelectedLight() : null;
@@ -78,8 +90,13 @@ export function initLightControls({ gui, params, getSelectedLight, setSelectedLi
             penumbraCtrl.show();
             params.selectedLightPenumbra = light.penumbra;
             penumbraCtrl.setValue(params.selectedLightPenumbra);
+            
+            angleCtrl.show();
+            params.selectedLightAngle = light.angle * (180 / Math.PI);
+            angleCtrl.setValue(params.selectedLightAngle);
         } else {
             penumbraCtrl.hide();
+            angleCtrl.hide();
         }
     }
 

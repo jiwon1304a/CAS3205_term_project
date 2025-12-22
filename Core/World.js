@@ -1,4 +1,4 @@
-import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight, FluxVolume } from '../Object/index.js';
+import { Floor, Box, Skybox, DirectionalLight, PointLight, Spotlight, FluxVolume, Greenhouse, TomatoPlant, PendantLight } from '../Object/index.js';
 import * as THREE from 'three/webgpu';
 
 export class World {
@@ -29,6 +29,34 @@ export class World {
         this.boxes.push(b);
         this.dirty = true;
         return b;
+    }
+
+    createGreenhouse({ position = { x: 0, y: 0, z: 0 } } = {}) {
+        const gh = new Greenhouse({ position });
+        gh.addTo(this.scene);
+        // Greenhouse contains lights and plants, we might need to register them if we want simulation to see them
+        // For now, just adding the mesh group to scene
+        this.boxes.push(gh); // Treat as a box/mesh for now
+        this.dirty = true;
+        return gh;
+    }
+
+    createTomatoPlant({ position = { x: 0, y: 0, z: 0 }, scale = 1 } = {}) {
+        const tp = new TomatoPlant({ position, scale });
+        tp.addTo(this.scene);
+        this.boxes.push(tp); // Treat as a box/mesh for now
+        this.dirty = true;
+        return tp;
+    }
+
+    createPendantLight({ position = { x: 0, y: 0, z: 0 } } = {}) {
+        const pl = new PendantLight({ position });
+        pl.addTo(this.scene);
+        pl.createHelper(this.scene);
+        this.boxes.push(pl); // It has geometry
+        this.lights.push(pl); // It has light
+        this.dirty = true;
+        return pl;
     }
 
     createDirectionalLight({ color = 0xffffff, intensity = 1, position = new THREE.Vector3(0, 10, 0), name = 'DirectionalLight', icon = '', iconSize = 1, showHelper = true } = {}) {

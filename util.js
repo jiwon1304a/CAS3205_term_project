@@ -135,7 +135,7 @@ export function initDefaultDirectionalLighting(scene, initialPosition) {
 export function initOrbitControls(camera, renderer) {
     const orbitControls = new OrbitControls(camera, renderer.domElement);
     orbitControls.rotateSpeed = 1.0;
-    orbitControls.zoomSpeed = 1.2;
+    orbitControls.zoomSpeed = 8;
     orbitControls.panSpeed = 0.8;
     orbitControls.noZoom = false;
     orbitControls.noPan = false;

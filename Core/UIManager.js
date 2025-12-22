@@ -14,13 +14,13 @@ export class UIManager {
             width: 4, height: 2, depth: 2,
             posX: 0, posY: 3, posZ: 0,
             rotX: 0, rotY: 0, rotZ: 0,
-            color: '#0077ff',
+            color: '#ffffff',
             scaleX: 1, scaleY: 1, scaleZ: 1,
             lightEnabled: true,
             dirIntensity: 1, dirX: -10, dirY: 10, dirZ: -10, showDirHelper: true,
             skyColor: '#87CEEB', skySize: 1000, skyVisible: true,
             selectedLightIntensity: 1, selectedLightColor: '#ffffff',
-            selectedLightDistance: 0, selectedLightPenumbra: 0
+            selectedLightDistance: 0, selectedLightPenumbra: 0, selectedLightAngle: 30
         };
 
         this.objectUI = null;
@@ -96,7 +96,7 @@ export class UIManager {
                     }
                 } else if (type === 'DirectionalLight') {
                     obj = this.world.createDirectionalLight({ 
-                        color: Math.floor(Math.random() * 0xffffff), 
+                        color: Math.floor(0xffffff), 
                         intensity: 0.5 + Math.random() * 1.5, 
                         position: new THREE.Vector3((Math.random() - 0.5) * 40, 5 + Math.random() * 15, (Math.random() - 0.5) * 40), 
                         name: 'DirectionalLight', icon: 'Assets/directionallight.svg', iconSize,
@@ -107,7 +107,7 @@ export class UIManager {
                     }
                 } else if (type === 'PointLight') {
                     obj = this.world.createPointLight({ 
-                        color: Math.floor(Math.random() * 0xffffff), 
+                        color: Math.floor(0xffffff), 
                         intensity: 10 + Math.random() * 20, 
                         position: new THREE.Vector3((Math.random() - 0.5) * 100, 1 + Math.random() * 4, (Math.random() - 0.5) * 100), 
                         distance: 2 + Math.random() * 80, 
@@ -119,7 +119,7 @@ export class UIManager {
                     }
                 } else if (type === 'SpotLight') {
                     obj = this.world.createSpotLight({ 
-                        color: Math.floor(Math.random() * 0xffffff), 
+                        color: Math.floor(0xffffff), 
                         intensity: 10 + Math.random() * 40, 
                         position: new THREE.Vector3((Math.random() - 0.5) * 40, 5 + Math.random() * 15, (Math.random() - 0.5) * 40), 
                         angle: Math.PI / 8 + Math.random() * (Math.PI / 4), 
@@ -140,6 +140,29 @@ export class UIManager {
                     if (obj && this.app.simulation) {
                         this.app.simulation.registerFluxVolume(obj);
                     }
+                } else if (type === 'Greenhouse') {
+                    obj = this.world.createGreenhouse({
+                        position: { x: 0, y: 0, z: 0 }
+                    });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerBox(obj);
+                    }
+                } else if (type === 'TomatoPlant') {
+                    obj = this.world.createTomatoPlant({
+                        position: { x: (Math.random() - 0.5) * 20, y: 0.28, z: (Math.random() - 0.5) * 20 },
+                        scale: 2.31
+                    });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerBox(obj);
+                    }
+                } else if (type === 'PendantLight') {
+                    obj = this.world.createPendantLight({
+                        position: { x: (Math.random() - 0.5) * 20, y: 5, z: (Math.random() - 0.5) * 20 }
+                    });
+                    if (obj && this.app.simulation) {
+                        this.app.simulation.registerBox(obj);
+                        this.app.simulation.registerLight(obj);
+                    }
                 }
 
                 if (obj) {
@@ -148,7 +171,7 @@ export class UIManager {
             }
         };
 
-        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume']).name('Type');
+        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume', 'Greenhouse', 'TomatoPlant', 'PendantLight']).name('Type');
         createFolder.add(createParams, 'create').name('Create');
         createFolder.open();
 

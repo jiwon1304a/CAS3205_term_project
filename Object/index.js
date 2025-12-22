@@ -5,4 +5,7 @@ export { default as Skybox } from './Skybox.js';
 export { default as Mesh } from './Mesh.js';
 export { default as BaseObject } from './Object.js';
 export { default as FluxVolume } from './FluxVolume.js';
+export { default as PendantLight } from './PendantLight.js';
+export { default as TomatoPlant } from './TomatoPlant.js';
+export { default as Greenhouse } from './Greenhouse.js';
 export { DirectionalLight, PointLight, Spotlight } from './Light.js';
