@@ -61,57 +61,58 @@ export class Greenhouse extends Mesh {
             group.add(wall);
         }
 
-        function addRoofPanel(side, material) {
-            const positions =
-                side === "left"
-                    ? [
-                        -ghWidth / 2,
-                        wallHeight,
-                        -ghDepth / 2,
-                        0,
-                        ridgeHeight,
-                        -ghDepth / 2,
-                        0,
-                        ridgeHeight,
-                        ghDepth / 2,
-                        -ghWidth / 2,
-                        wallHeight,
-                        -ghDepth / 2,
-                        0,
-                        ridgeHeight,
-                        ghDepth / 2,
-                        -ghWidth / 2,
-                        wallHeight,
-                        ghDepth / 2,
-                    ]
-                    : [
-                        ghWidth / 2,
-                        wallHeight,
-                        -ghDepth / 2,
-                        ghWidth / 2,
-                        wallHeight,
-                        ghDepth / 2,
-                        0,
-                        ridgeHeight,
-                        ghDepth / 2,
-                        ghWidth / 2,
-                        wallHeight,
-                        -ghDepth / 2,
-                        0,
-                        ridgeHeight,
-                        ghDepth / 2,
-                        0,
-                        ridgeHeight,
-                        -ghDepth / 2,
-                    ];
-            const geom = new THREE.BufferGeometry();
-            geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-            geom.computeVertexNormals();
-            const roof = new THREE.Mesh(geom, material);
-            roof.castShadow = true;
-            roof.receiveShadow = true;
-            group.add(roof);
-        }
+        // Removed roof panel function as roof is deleted
+        // function addRoofPanel(side, material) {
+        //     const positions =
+        //         side === "left"
+        //             ? [
+        //                 -ghWidth / 2,
+        //                 wallHeight,
+        //                 -ghDepth / 2,
+        //                 0,
+        //                 ridgeHeight,
+        //                 -ghDepth / 2,
+        //                 0,
+        //                 ridgeHeight,
+        //                 ghDepth / 2,
+        //                 -ghWidth / 2,
+        //                 wallHeight,
+        //                 -ghDepth / 2,
+        //                 0,
+        //                 ridgeHeight,
+        //                 ghDepth / 2,
+        //                 -ghWidth / 2,
+        //                 wallHeight,
+        //                 ghDepth / 2,
+        //             ]
+        //             : [
+        //                 ghWidth / 2,
+        //                 wallHeight,
+        //                 -ghDepth / 2,
+        //                 ghWidth / 2,
+        //                 wallHeight,
+        //                 ghDepth / 2,
+        //                 0,
+        //                 ridgeHeight,
+        //                 ghDepth / 2,
+        //                 ghWidth / 2,
+        //                 wallHeight,
+        //                 -ghDepth / 2,
+        //                 0,
+        //                 ridgeHeight,
+        //                 ghDepth / 2,
+        //                 0,
+        //                 ridgeHeight,
+        //                 -ghDepth / 2,
+        //             ];
+        //     const geom = new THREE.BufferGeometry();
+        //     geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        //     geom.computeVertexNormals();
+        //     const roof = new THREE.Mesh(geom, material);
+        //     roof.castShadow = true;
+        //     roof.receiveShadow = true;
+        //     group.add(roof);
+        // }
 
         // Walls (front segmented with doorway, back, left, right)
         const sideSpan = (ghWidth - doorWidth) / 2;
@@ -149,90 +150,90 @@ export class Greenhouse extends Mesh {
         rightWall.position.set(ghWidth / 2 - wallThk / 2, wallHeight / 2, 0);
         group.add(rightWall);
 
-        // Gable triangles
-        const gableGeom = new THREE.BufferGeometry();
-        gableGeom.setAttribute(
-            "position",
-            new THREE.Float32BufferAttribute(
-                [
-                    -ghWidth / 2,
-                    wallHeight,
-                    0,
-                    ghWidth / 2,
-                    wallHeight,
-                    0,
-                    0,
-                    ridgeHeight,
-                    0,
-                ],
-                3
-            )
-        );
-        gableGeom.computeVertexNormals();
-        const gableFront = new THREE.Mesh(gableGeom, matConcrete);
-        gableFront.position.z = ghDepth / 2 - wallThk / 2;
-        gableFront.castShadow = true;
-        gableFront.receiveShadow = true;
-        group.add(gableFront);
-        const gableBack = gableFront.clone();
-        gableBack.position.z = -ghDepth / 2 + wallThk / 2;
-        group.add(gableBack);
+        // Gable triangles - removed roof
+        // const gableGeom = new THREE.BufferGeometry();
+        // gableGeom.setAttribute(
+        //     "position",
+        //     new THREE.Float32BufferAttribute(
+        //         [
+        //             -ghWidth / 2,
+        //             wallHeight,
+        //             0,
+        //             ghWidth / 2,
+        //             wallHeight,
+        //             0,
+        //             0,
+        //             ridgeHeight,
+        //             0,
+        //         ],
+        //         3
+        //     )
+        // );
+        // gableGeom.computeVertexNormals();
+        // const gableFront = new THREE.Mesh(gableGeom, matConcrete);
+        // gableFront.position.z = ghDepth / 2 - wallThk / 2;
+        // gableFront.castShadow = true;
+        // gableFront.receiveShadow = true;
+        // group.add(gableFront);
+        // const gableBack = gableFront.clone();
+        // gableBack.position.z = -ghDepth / 2 + wallThk / 2;
+        // group.add(gableBack);
 
-        // Roof panels
-        addRoofPanel("left", matRoof);
-        addRoofPanel("right", matGlass);
+        // Roof panels - removed roof
+        // addRoofPanel("left", matRoof);
+        // addRoofPanel("right", matGlass);
 
-        // Frames along the opaque left wall, climbing toward the ridge (visible inside & outside)
-        function addWallFrame(z) {
-            const frameRadius = 0.08;
-            const xInside = -ghWidth / 2 + wallThk - frameRadius * 0.5;
-            const xOutside = -ghWidth / 2 - frameRadius * 0.5;
+        // Frames along the opaque left wall, climbing toward the ridge - removed roof frames
+        // function addWallFrame(z) {
+        //     const frameRadius = 0.08;
+        //     const xInside = -ghWidth / 2 + wallThk - frameRadius * 0.5;
+        //     const xOutside = -ghWidth / 2 - frameRadius * 0.5;
 
-            [xInside, xOutside].forEach((xPos) => {
-                // vertical post
-                const vertical = new THREE.Mesh(
-                    new THREE.CylinderGeometry(frameRadius, frameRadius, wallHeight, 18),
-                    matBlackMetal
-                );
-                vertical.position.set(xPos, wallHeight / 2, z);
-                vertical.castShadow = true;
-                vertical.receiveShadow = true;
-                group.add(vertical);
+        //     [xInside, xOutside].forEach((xPos) => {
+        //         // vertical post
+        //         const vertical = new THREE.Mesh(
+        //             new THREE.CylinderGeometry(frameRadius, frameRadius, wallHeight, 18),
+        //             matBlackMetal
+        //         );
+        //         vertical.position.set(xPos, wallHeight / 2, z);
+        //         vertical.castShadow = true;
+        //         vertical.receiveShadow = true;
+        //         group.add(vertical);
 
-                // sloped member following the gable roof toward the ridge
-                const start = new THREE.Vector3(xPos, wallHeight, z);
-                const end = new THREE.Vector3(0, ridgeHeight, z);
-                const length = start.distanceTo(end);
-                const slope = new THREE.Mesh(
-                    new THREE.CylinderGeometry(
-                        frameRadius * 0.9,
-                        frameRadius * 0.9,
-                        length,
-                        18
-                    ),
-                    matBlackMetal
-                );
-                slope.position.copy(start).add(end).multiplyScalar(0.5);
-                slope.quaternion.setFromUnitVectors(
-                    new THREE.Vector3(0, 1, 0),
-                    end.clone().sub(start).normalize()
-                );
-                slope.castShadow = true;
-                slope.receiveShadow = true;
-                group.add(slope);
-            });
-        }
+        //         // sloped member following the gable roof toward the ridge
+        //         const start = new THREE.Vector3(xPos, wallHeight, z);
+        //         const end = new THREE.Vector3(0, ridgeHeight, z);
+        //         const length = start.distanceTo(end);
+        //         const slope = new THREE.Mesh(
+        //             new THREE.CylinderGeometry(
+        //                 frameRadius * 0.9,
+        //                 frameRadius * 0.9,
+        //                 length,
+        //                 18
+        //             ),
+        //             matBlackMetal
+        //         );
+        //         slope.position.copy(start).add(end).multiplyScalar(0.5);
+        //         slope.quaternion.setFromUnitVectors(
+        //             new THREE.Vector3(0, 1, 0),
+        //             end.clone().sub(start).normalize()
+        //         );
+        //         slope.castShadow = true;
+        //         slope.receiveShadow = true;
+        //         group.add(slope);
+        //     });
+        // }
 
-        const frameCount = 2;
-        for (let i = 0; i < frameCount; i++) {
-            const t = (i + 1) / (frameCount + 1); // even spacing away from edges
-            const z = THREE.MathUtils.lerp(
-                -ghDepth / 2 + wallThk,
-                ghDepth / 2 - wallThk,
-                t
-            );
-            addWallFrame(z);
-        }
+        // const frameCount = 2;
+        // for (let i = 0; i < frameCount; i++) {
+        //     const t = (i + 1) / (frameCount + 1); // even spacing away from edges
+        //     const z = THREE.MathUtils.lerp(
+        //         -ghDepth / 2 + wallThk,
+        //         ghDepth / 2 - wallThk,
+        //         t
+        //     );
+        //     addWallFrame(z);
+        // }
 
         // Floor slab
         const floorThk = 0.3;

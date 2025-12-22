@@ -15,7 +15,7 @@ export class App {
         this.simulation = null;
 
         // Heatmap sensitivity
-        this.heatmapScale = uniform(5.0);
+        this.heatmapScale = uniform(1.0);
         
         // Light Count Overlay Influence
         this.tileInfluence = uniform(0.0);

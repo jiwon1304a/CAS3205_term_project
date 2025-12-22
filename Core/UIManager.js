@@ -1,5 +1,6 @@
 import { createGUI, initObjectControls, initLightControls, initMeshControls, FluxOverlay } from '../UI/index.js';
 import * as THREE from 'three/webgpu';
+import { DEBUG } from '../Core/Globals.js';
 
 export class UIManager {
     constructor(app, world, interaction) {
@@ -69,7 +70,7 @@ export class UIManager {
             }
         }).listen();
         
-        camFolder.add(this.app.heatmapScale, 'value', 0.1, 50).name('Heatmap Sensitivity');
+        camFolder.add(this.app.heatmapScale, 'value', 0.1, 5).name('Heatmap Sensitivity');
         
         camFolder.open();
 
@@ -78,6 +79,12 @@ export class UIManager {
         greenhouseFolder.add(this.params, 'scaleX', 0.1, 5, 0.1).name('Width').onChange((v) => {
             if (this.world.greenhouse) {
                 this.world.greenhouse.getObject3D().scale.x = v;
+                this.world.dirty = true;
+            }
+        });
+        greenhouseFolder.add(this.params, 'scaleY', 0.1, 5, 0.1).name('Height').onChange((v) => {
+            if (this.world.greenhouse) {
+                this.world.greenhouse.getObject3D().scale.y = v;
                 this.world.dirty = true;
             }
         });
@@ -92,6 +99,7 @@ export class UIManager {
         // 1. Create Object Dropdown & Button
         const createFolder = this.gui.addFolder('Create Object');
         const createParams = {
+            
             type: 'Box', // default
             create: () => {
                 const type = createParams.type;
@@ -171,7 +179,9 @@ export class UIManager {
             }
         };
 
-        createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume', 'TomatoPlant']).name('Type');
+        if (DEBUG) {
+            createFolder.add(createParams, 'type', ['Box', 'DirectionalLight', 'PointLight', 'SpotLight', 'FluxVolume', 'TomatoPlant']).name('Type');
+        }
         createFolder.add(createParams, 'create').name('Create');
 
         // Plant 생성 버튼
@@ -196,7 +206,7 @@ export class UIManager {
         const pendantLightParams = {
             createPendantLight: () => {
                 const obj = this.world.createPendantLight({
-                    position: { x: (Math.random() - 0.5) * 20, y: 5, z: (Math.random() - 0.5) * 20 }
+                    position: { x: 0, y: 12, z: 0 }
                 });
                 if (obj && this.app.simulation) {
                     this.app.simulation.registerLight(obj);
@@ -211,42 +221,42 @@ export class UIManager {
 
         const setDirty = () => { if (this.world) this.world.dirty = true; };
 
-        // Object Controls
-        this.objectUI = initObjectControls({ 
-            gui: this.gui, 
-            params: this.params,
-            getSelectedObject: () => this.interaction.selectedObject,
-            setSelectedObject: (o) => this.interaction.select(o),
-            setDirty
-        });
+            // Object Controls
+            this.objectUI = initObjectControls({ 
+                gui: this.gui, 
+                params: this.params,
+                getSelectedObject: () => this.interaction.selectedObject,
+                setSelectedObject: (o) => this.interaction.select(o),
+                setDirty
+            });
 
-        // Light Controls (Inspection only)
-        this.lightUI = initLightControls({ 
-            gui: this.gui, 
-            params: this.params,
-            getSelectedLight: () => (this.interaction.selectedObject && typeof this.interaction.selectedObject.getLight === 'function') ? this.interaction.selectedObject : null,
-            setDirty,
-            removeLight: (light) => {
-                if (this.world) this.world.removeLight(light);
-                if (this.app.simulation) this.app.simulation.removeLight(light);
-                this.interaction.select(null);
-            }
-        });
+            // Light Controls (Inspection only)
+            this.lightUI = initLightControls({ 
+                gui: this.gui, 
+                params: this.params,
+                getSelectedLight: () => (this.interaction.selectedObject && typeof this.interaction.selectedObject.getLight === 'function') ? this.interaction.selectedObject : null,
+                setDirty,
+                removeLight: (light) => {
+                    if (this.world) this.world.removeLight(light);
+                    if (this.app.simulation) this.app.simulation.removeLight(light);
+                    this.interaction.select(null);
+                }
+            });
 
-        // Mesh Controls
-        this.meshUI = initMeshControls({ 
-            gui: this.gui, 
-            params: this.params,
-            getSelectedMesh: () => {
-                const sel = this.interaction.selectedObject;
-                if (!sel) return null;
-                const obj3d = sel.getObject3D ? sel.getObject3D() : sel;
-                if (sel.setColor || (obj3d && obj3d.material && obj3d.material.color)) return sel;
-                return null;
-            },
-            setSelectedMesh: (m) => this.interaction.select(m),
-            setDirty
-        });
+            // Mesh Controls
+            this.meshUI = initMeshControls({ 
+                gui: this.gui, 
+                params: this.params,
+                getSelectedMesh: () => {
+                    const sel = this.interaction.selectedObject;
+                    if (!sel) return null;
+                    const obj3d = sel.getObject3D ? sel.getObject3D() : sel;
+                    if (sel.setColor || (obj3d && obj3d.material && obj3d.material.color)) return sel;
+                    return null;
+                },
+                setSelectedMesh: (m) => this.interaction.select(m),
+                setDirty
+            });
 
         // Initialize visibility (hide all initially if nothing selected)
         this.updateUI(this.interaction.selectedObject);
