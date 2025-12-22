@@ -1,62 +1,56 @@
 import * as THREE from 'three';
 import Box from './Box.js';
 
-const SAMPLING_POINTS_TEMPLATE = [
-    // Face centers (excluding y=0)
-    { point: new THREE.Vector3(0.5, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) }, // Top
-    { point: new THREE.Vector3(0.5, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) }, // Front
-    { point: new THREE.Vector3(0.5, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) }, // Back
-    { point: new THREE.Vector3(1, 0.5, 0.5), normal: new THREE.Vector3(1, 0, 0) }, // Right
-    { point: new THREE.Vector3(0, 0.5, 0.5), normal: new THREE.Vector3(-1, 0, 0) }, // Left
+export const SAMPLING_POINTS_TEMPLATE = [
+    // Top face (y=1), 4x4 grid
+    ...Array.from({length: 16}, (_, idx) => {
+        const i = idx % 4;
+        const j = Math.floor(idx / 4);
+        return {
+            point: new THREE.Vector3(i / 3, 1, j / 3),
+            normal: new THREE.Vector3(0, 1, 0)
+        };
+    }),
 
-    // Vertices at y=1
-    // (0, 1, 0)
-    { point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(-1, 0, 0) },
-    { point: new THREE.Vector3(0, 1, 0), normal: new THREE.Vector3(0, 0, -1) },
+    // Front face (z=1), 4x3 grid (y from 1/3 to 1)
+    ...Array.from({length: 12}, (_, idx) => {
+        const i = idx % 4;
+        const j = Math.floor(idx / 4) + 1; // j=1,2,3
+        return {
+            point: new THREE.Vector3(i / 3, j / 3, 1),
+            normal: new THREE.Vector3(0, 0, 1)
+        };
+    }),
 
-    // (1, 1, 0)
-    { point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(1, 0, 0) },
-    { point: new THREE.Vector3(1, 1, 0), normal: new THREE.Vector3(0, 0, -1) },
+    // Back face (z=0), 4x3 grid
+    ...Array.from({length: 12}, (_, idx) => {
+        const i = idx % 4;
+        const j = Math.floor(idx / 4) + 1;
+        return {
+            point: new THREE.Vector3(i / 3, j / 3, 0),
+            normal: new THREE.Vector3(0, 0, -1)
+        };
+    }),
 
-    // (0, 1, 1)
-    { point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(-1, 0, 0) },
-    { point: new THREE.Vector3(0, 1, 1), normal: new THREE.Vector3(0, 0, 1) },
+    // Right face (x=1), 4x3 grid
+    ...Array.from({length: 12}, (_, idx) => {
+        const i = idx % 4;
+        const j = Math.floor(idx / 4) + 1;
+        return {
+            point: new THREE.Vector3(1, j / 3, i / 3),
+            normal: new THREE.Vector3(1, 0, 0)
+        };
+    }),
 
-    // (1, 1, 1)
-    { point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(1, 0, 0) },
-    { point: new THREE.Vector3(1, 1, 1), normal: new THREE.Vector3(0, 0, 1) },
-
-    // Top Edge Centers (y=1)
-    // (0.5, 1, 0) - Back Edge
-    { point: new THREE.Vector3(0.5, 1, 0), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(0.5, 1, 0), normal: new THREE.Vector3(0, 0, -1) },
-    // (0.5, 1, 1) - Front Edge
-    { point: new THREE.Vector3(0.5, 1, 1), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(0.5, 1, 1), normal: new THREE.Vector3(0, 0, 1) },
-    // (0, 1, 0.5) - Left Edge
-    { point: new THREE.Vector3(0, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(0, 1, 0.5), normal: new THREE.Vector3(-1, 0, 0) },
-    // (1, 1, 0.5) - Right Edge
-    { point: new THREE.Vector3(1, 1, 0.5), normal: new THREE.Vector3(0, 1, 0) },
-    { point: new THREE.Vector3(1, 1, 0.5), normal: new THREE.Vector3(1, 0, 0) },
-
-    // Vertical Edge Centers (y=0.5)
-    // (0, 0.5, 0) - Back-Left
-    { point: new THREE.Vector3(0, 0.5, 0), normal: new THREE.Vector3(-1, 0, 0) },
-    { point: new THREE.Vector3(0, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) },
-    // (1, 0.5, 0) - Back-Right
-    { point: new THREE.Vector3(1, 0.5, 0), normal: new THREE.Vector3(1, 0, 0) },
-    { point: new THREE.Vector3(1, 0.5, 0), normal: new THREE.Vector3(0, 0, -1) },
-    // (0, 0.5, 1) - Front-Left
-    { point: new THREE.Vector3(0, 0.5, 1), normal: new THREE.Vector3(-1, 0, 0) },
-    { point: new THREE.Vector3(0, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) },
-    // (1, 0.5, 1) - Front-Right
-    { point: new THREE.Vector3(1, 0.5, 1), normal: new THREE.Vector3(1, 0, 0) },
-    { point: new THREE.Vector3(1, 0.5, 1), normal: new THREE.Vector3(0, 0, 1) }
+    // Left face (x=0), 4x3 grid
+    ...Array.from({length: 12}, (_, idx) => {
+        const i = idx % 4;
+        const j = Math.floor(idx / 4) + 1;
+        return {
+            point: new THREE.Vector3(0, j / 3, i / 3),
+            normal: new THREE.Vector3(-1, 0, 0)
+        };
+    })
 ];
 
 export class FluxVolume extends Box {

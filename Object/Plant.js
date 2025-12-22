@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import FluxVolume from './FluxVolume.js';
+import FluxVolume, { SAMPLING_POINTS_TEMPLATE } from './FluxVolume.js';
 
 export class Plant extends FluxVolume {
     constructor(options = {}) {
@@ -33,45 +33,32 @@ export class Plant extends FluxVolume {
             metalness: 0.08,
         });
 
-        // pot
-        const pot = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.65, 0.85, 0.65, 32),
-            matPot
-        );
-        pot.position.y = 0.32;
-        pot.rotation.x = Math.PI; // flip the pot upside down
-        pot.castShadow = true;
-        pot.receiveShadow = true;
-        group.add(pot);
+        // Geometries for instancing
+        const leafGeometry = new THREE.PlaneGeometry(0.32, 0.16);
+        const crownLeafGeometry = new THREE.PlaneGeometry(0.34, 0.18);
+        const crownTomatoGeometry = new THREE.SphereGeometry(0.16, 22, 22);
 
-        // soil
-        const soil = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.58, 0.65, 0.16, 32),
-            matSoil
-        );
-        soil.position.y = 0.68;
-        soil.castShadow = true;
-        soil.receiveShadow = true;
-        group.add(soil);
+        // Instance arrays
+        const leafInstances = [];
+        const crownLeafInstances = [];
+        const crownTomatoInstances = [];
 
         // helpers
         function addLeafCluster(origin, angle, scale = 1) {
             const count = 3;
             for (let i = 0; i < count; i++) {
                 const spread = -0.15 + 0.15 * i;
-                const leaf = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.32 * scale, 0.16 * scale),
-                    matLeaf
-                );
-                leaf.position.set(
+                const matrix = new THREE.Matrix4();
+                const position = new THREE.Vector3(
                     origin.x + Math.sin(angle) * spread,
                     origin.y + 0.02 * i,
                     origin.z + Math.cos(angle) * spread
                 );
-                leaf.rotation.set(-Math.PI / 7, angle + spread, 0);
-                leaf.castShadow = true;
-                leaf.receiveShadow = true;
-                group.add(leaf);
+                const rotation = new THREE.Euler(-Math.PI / 7, angle + spread, 0);
+                matrix.makeRotationFromEuler(rotation);
+                matrix.setPosition(position);
+                matrix.scale(new THREE.Vector3(scale, scale, scale));
+                leafInstances.push(matrix);
             }
         }
 
@@ -105,6 +92,27 @@ export class Plant extends FluxVolume {
                 group.add(pedicel);
             }
         }
+
+        // pot
+        const pot = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.65, 0.85, 0.65, 32),
+            matPot
+        );
+        pot.position.y = 0.32;
+        pot.rotation.x = Math.PI; // flip the pot upside down
+        pot.castShadow = true;
+        pot.receiveShadow = true;
+        group.add(pot);
+
+        // soil
+        const soil = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.58, 0.65, 0.16, 32),
+            matSoil
+        );
+        soil.position.y = 0.68;
+        soil.castShadow = true;
+        soil.receiveShadow = true;
+        group.add(soil);
 
         // main stem
         const stem = new THREE.Mesh(
@@ -177,24 +185,39 @@ export class Plant extends FluxVolume {
         // crown leaves and fruits
         for (let i = 0; i < 14; i++) {
             const angle = (i / 14) * Math.PI * 2;
-            const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.18), matLeaf);
-            leaf.position.set(Math.cos(angle) * 0.35, 2.1, Math.sin(angle) * 0.35);
-            leaf.rotation.set(-Math.PI / 6, angle, 0);
-            leaf.castShadow = true;
-            leaf.receiveShadow = true;
-            group.add(leaf);
+            const matrix = new THREE.Matrix4();
+            const position = new THREE.Vector3(Math.cos(angle) * 0.35, 2.1, Math.sin(angle) * 0.35);
+            const rotation = new THREE.Euler(-Math.PI / 6, angle, 0);
+            matrix.makeRotationFromEuler(rotation);
+            matrix.setPosition(position);
+            crownLeafInstances.push(matrix);
 
             if (i % 3 === 0) {
-                const tomato = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.16, 22, 22),
-                    matTomato
-                );
-                tomato.position.set(Math.cos(angle) * 0.42, 1.95, Math.sin(angle) * 0.42);
-                tomato.castShadow = true;
-                tomato.receiveShadow = true;
-                group.add(tomato);
+                const tomatoMatrix = new THREE.Matrix4();
+                const tomatoPos = new THREE.Vector3(Math.cos(angle) * 0.42, 1.95, Math.sin(angle) * 0.42);
+                tomatoMatrix.setPosition(tomatoPos);
+                crownTomatoInstances.push(tomatoMatrix);
             }
         }
+
+        // Create instanced meshes after all instances are collected
+        const leafInstancedMesh = new THREE.InstancedMesh(leafGeometry, matLeaf, leafInstances.length);
+        leafInstances.forEach((matrix, i) => leafInstancedMesh.setMatrixAt(i, matrix));
+        leafInstancedMesh.castShadow = true;
+        leafInstancedMesh.receiveShadow = true;
+        group.add(leafInstancedMesh);
+
+        const crownLeafInstancedMesh = new THREE.InstancedMesh(crownLeafGeometry, matLeaf, crownLeafInstances.length);
+        crownLeafInstances.forEach((matrix, i) => crownLeafInstancedMesh.setMatrixAt(i, matrix));
+        crownLeafInstancedMesh.castShadow = true;
+        crownLeafInstancedMesh.receiveShadow = true;
+        group.add(crownLeafInstancedMesh);
+
+        const crownTomatoInstancedMesh = new THREE.InstancedMesh(crownTomatoGeometry, matTomato, crownTomatoInstances.length);
+        crownTomatoInstances.forEach((matrix, i) => crownTomatoInstancedMesh.setMatrixAt(i, matrix));
+        crownTomatoInstancedMesh.castShadow = true;
+        crownTomatoInstancedMesh.receiveShadow = true;
+        group.add(crownTomatoInstancedMesh);
 
         // Apply scale if provided
         const scale = options.scale || 1;
@@ -245,6 +268,29 @@ export class Plant extends FluxVolume {
         // Set the first plant as the main mesh for compatibility
         this.mesh = this.plantMeshes[0];
         this.mesh.visible = true;
+    }
+
+    getSamplingPoints() {
+        this._object3D.updateMatrixWorld(true);
+        const matrixWorld = this._object3D.matrixWorld;
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(matrixWorld);
+
+        const scale = new THREE.Vector3(8, 5, 8);
+        const translate = new THREE.Vector3(-4, 0, -4);
+
+        const points = [];
+
+        for (const template of SAMPLING_POINTS_TEMPLATE) {
+            const p = {
+                point: template.point.clone().multiply(scale).add(translate),
+                normal: template.normal.clone()
+            };
+            p.point.applyMatrix4(matrixWorld);
+            p.normal.applyMatrix3(normalMatrix).normalize();
+            points.push(p);
+        }
+
+        return points;
     }
 }
 
